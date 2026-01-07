@@ -30,9 +30,9 @@ dev = [
     "tox-uv>=1.29.0",
     "deptry>=0.24.0",
     "ty>=0.0.8",
-    
+
     "ruff>=0.14.10",
-    
+
 ]
 
 [build-system]
@@ -99,5 +99,3 @@ ignore = [
 
 [tool.ruff.format]
 preview = true
-
-
