@@ -30,13 +30,12 @@ Documentation = "https://JonathanPiaget.github.io/searchmark-api/"
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "httpx>=0.28.0",
     "pre-commit>=4.5.1",
     "tox-uv>=1.29.0",
     "deptry>=0.24.0",
     "ty>=0.0.8",
-
     "ruff>=0.14.10",
-
 ]
 
 [build-system]
@@ -103,3 +102,6 @@ ignore = [
 
 [tool.ruff.format]
 preview = true
+
+[tool.deptry.per_rule_ignores]
+DEP002 = ["uvicorn"]
