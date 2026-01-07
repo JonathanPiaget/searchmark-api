@@ -1,4 +1,9 @@
 repos:
+  - repo: https://github.com/mxr/sync-pre-commit-deps
+    rev: "v0.0.3"
+    hooks:
+      - id: sync-pre-commit-deps
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "v6.0.0"
     hooks:
@@ -7,12 +12,13 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: check-json
-        exclude: ^.devcontainer/devcontainer.json
       - id: pretty-format-json
-        exclude: ^.devcontainer/devcontainer.json
         args: [--autofix, --no-sort-keys]
       - id: end-of-file-fixer
       - id: trailing-whitespace
+      - id: debug-statements
+      - id: check-builtin-literals
+      - id: detect-private-key
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.14.10"
@@ -20,3 +26,20 @@ repos:
       - id: ruff-check
         args: [ --exit-non-zero-on-fix ]
       - id: ruff-format
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.9.22
+    hooks:
+      - id: uv-lock
+        args: ['--frozen']
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: "v1.7.10"
+    hooks:
+      - id: actionlint
