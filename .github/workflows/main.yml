@@ -121,7 +121,7 @@ jobs:
     steps:
       - name: Trigger webhook deployment
         run: |
-          curl -X POST https://webhook.${{ secrets.DOMAIN }}/deploy/searchmark \
+          curl -X POST https://webhook.${{ secrets.DOMAIN }}/deploy/jpserver \
             -H "X-Webhook-Token: ${{ secrets.WEBHOOK_SECRET }}" \
             -H "Content-Type: application/json" \
             -d '{
