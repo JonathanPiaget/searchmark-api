@@ -9,11 +9,11 @@ env:
   FORCE_COLOR: 1
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    branches: ["*"]
+
+  push:
+    branches: ["*"]
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
