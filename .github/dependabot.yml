@@ -17,7 +17,10 @@ updates:
 
   # Enable version updates for Docker
   - package-ecosystem: 'docker'
-    directory: '/'
+    directories:
+      - 'compose/production/postgres'
+      - 'compose/production/fastapi'
+      - 'compose/local/fastapi'
     schedule:
       interval: 'monthly'
     # Ignore minor version updates (3.10 -> 3.11) but update patch versions
@@ -30,6 +33,22 @@ updates:
       dockerfiles:
         patterns:
           - '*'
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+    groups:
+      docker-compose:
+        patterns:
+          - "*"
     cooldown:
       default-days: 7
 
