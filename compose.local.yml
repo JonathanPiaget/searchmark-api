@@ -9,6 +9,7 @@ services:
       - "8000:80"
     env_file:
       - .envs/.local/.postgres
+      - .envs/.local/.fastapi
     volumes:
       - .:/app:z
       - /app/.venv
