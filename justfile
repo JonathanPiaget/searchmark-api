@@ -31,3 +31,8 @@ build: clean-build
 clean-build:
     echo "🚀 Removing build artifacts"
     rm -rf dist
+
+# Run the github actions locally using act
+ci:
+    echo "🚀 Running GitHub Actions locally using act"
+    act push
