@@ -16,4 +16,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PATH="/${APP_HOME}/.venv/bin:$PATH"
 
-CMD ["fastapi", "run", "app/main.py", "--port", "80"]
+CMD ["fastapi", "dev", "app/main.py", "--host", "0.0.0.0", "--port", "80"]
