@@ -54,6 +54,9 @@ jobs:
       - name: Build the stack
         run: docker compose -f compose.local.yml build
 
+      - name: Start the Stack
+        run: docker compose -f compose.local.yml up -d --wait
+
       - name: Run pytest
         run: docker compose -f compose.local.yml exec fastapi uv run python -m pytest tests
 
