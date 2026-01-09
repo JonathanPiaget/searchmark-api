@@ -15,6 +15,9 @@ FROM docker.io/python:3.14-bookworm-slim AS python-run-stage
 ARG APP_HOME=/app
 WORKDIR ${APP_HOME}
 
+# Install apt packages
+RUN apt-get update && apt-get install --no-install-recommends -y curl
+
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 COPY --from=python-build-stage --chown=appuser:appgroup ${APP_HOME} ${APP_HOME}

@@ -4,6 +4,9 @@ ARG APP_HOME=/app
 
 WORKDIR ${APP_HOME}
 
+# Install apt packages
+RUN apt-get update && apt-get install --no-install-recommends -y curl
+
 # we need to move the virtualenv outside of the $APP_HOME directory because it will be overriden by the docker compose mount
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_CACHE_DIR=/root/.cache/uv
 
