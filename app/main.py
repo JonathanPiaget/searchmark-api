@@ -1,3 +1,4 @@
+from typing import cast
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
@@ -12,7 +13,7 @@ BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
 app = FastAPI(title="SearchMark API", version="0.1.0")
 
 llm = ChatOpenAI(
-    model="gpt-4o-mini",
+    model="gpt-4o-mini",  # type: ignore[call-arg]
 )
 
 
@@ -50,7 +51,7 @@ async def analyze_url(url: str) -> AnalyzeUrlResponse:
         ("system", "Analyze this web page and extract the URL, title, summary, and keywords."),
         ("human", f"URL: {url}\n\nContent:\n{content}"),
     ]
-    return await structured_llm.ainvoke(messages)
+    return cast(AnalyzeUrlResponse, await structured_llm.ainvoke(messages))
 
 
 @app.get("/health")
