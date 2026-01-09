@@ -1,5 +1,5 @@
 services:
-  api:
+  fastapi:
     build:
       context: .
       dockerfile: ./compose/local/fastapi/Dockerfile
