@@ -51,6 +51,9 @@ jobs:
       - name: Check out
         uses: actions/checkout@v6
 
+      - name: Create env file
+        run: cp .envs/.local/.fastapi.example .envs/.local/.fastapi
+
       - name: Build the stack
         run: docker compose -f compose.local.yml build
 
