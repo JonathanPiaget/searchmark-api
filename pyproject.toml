@@ -12,6 +12,7 @@ dependencies = [
     "langchain-community",
     "html2text",
     "bs4",
+    "python-toon",
 ]
 classifiers = [
     "Intended Audience :: Developers",

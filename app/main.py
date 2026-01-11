@@ -1,3 +1,4 @@
+import json
 from typing import cast
 from urllib.parse import urlparse
 
@@ -5,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from langchain_community.document_loaders import AsyncHtmlLoader
 from langchain_community.document_transformers import Html2TextTransformer
 from langchain_openai import ChatOpenAI
+from toon import encode as toon_encode
 
 from app.schemas.analyze import AnalyseUrlRequest, AnalyzeUrlResponse, RecommendationResponse
 
@@ -62,7 +64,8 @@ async def get_folder_recommendation(
     """Recommend a folder based on page analysis and available folders."""
     structured_llm = llm.with_structured_output(RecommendationResponse)
 
-    has_folders = bool(folders_json and folders_json.strip() and folders_json.strip() not in ("[]", "{}"))
+    folders_data = json.loads(folders_json)
+    folders_toon = toon_encode(folders_data)
 
     system_prompt = """You are a bookmark organization assistant. Based on the webpage analysis and the user's folder structure, recommend the best folder for this bookmark.
 
@@ -79,8 +82,8 @@ Rules:
 - Summary: {analysis.summary}
 - Keywords: {", ".join(analysis.keywords)}
 
-User's Folder Structure:
-{folders_json if has_folders else "(No folders available)"}
+User's Folder Structure (TOON format):
+{folders_toon}
 
 Please recommend the best folder for this bookmark."""
 
@@ -94,7 +97,8 @@ Please recommend the best folder for this bookmark."""
 @app.post("/recommend", response_model=RecommendationResponse)
 async def recommend_folder(request: AnalyseUrlRequest) -> RecommendationResponse:
     analysis = await fetch_and_analyze_url(request.url)
-    recommendation = await get_folder_recommendation(analysis, request.folders)
+    folders_json = json.dumps([f.model_dump() for f in request.folders])
+    recommendation = await get_folder_recommendation(analysis, folders_json)
     return recommendation
 
 

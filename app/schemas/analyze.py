@@ -1,9 +1,15 @@
 from pydantic import BaseModel, Field
 
 
+class Folder(BaseModel):
+    id: str
+    name: str
+    children: list["Folder"] = Field(default_factory=list)
+
+
 class AnalyseUrlRequest(BaseModel):
     url: str = Field(description="The URL to be analyzed")
-    folders: str = Field(default="", description="Optional JSON string representing folder structure")
+    folders: list[Folder] = Field(default_factory=list, description="Folder structure")
 
 
 class AnalyzeUrlResponse(BaseModel):
