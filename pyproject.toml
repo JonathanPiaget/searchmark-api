@@ -8,10 +8,8 @@ keywords = ['python']
 requires-python = ">=3.10,<4.0"
 dependencies = [
     "fastapi[standard]",
-    "langchain-openai",
-    "langchain-community",
+    "litellm",
     "html2text",
-    "bs4",
     "python-toon",
 ]
 classifiers = [
@@ -33,12 +31,12 @@ Documentation = "https://JonathanPiaget.github.io/searchmark-api/"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2",
-    "httpx>=0.28.0",
-    "pre-commit>=4.5.1",
-    "tox-uv>=1.29.0",
-    "ty>=0.0.8",
-    "ruff>=0.14.10",
+    "pytest",
+    "httpx",
+    "pre-commit",
+    "tox-uv",
+    "ty",
+    "ruff",
 ]
 prod = ["sentry-sdk"]
 

@@ -1,22 +1,21 @@
 import json
-from typing import cast
 from urllib.parse import urlparse
 
+import html2text
+import httpx
+import litellm
 from fastapi import FastAPI, HTTPException
-from langchain_community.document_loaders import AsyncHtmlLoader
-from langchain_community.document_transformers import Html2TextTransformer
-from langchain_openai import ChatOpenAI
+from litellm import acompletion
 from toon import encode as toon_encode
 
 from app.schemas.analyze import AnalyseUrlRequest, AnalyzeUrlResponse, RecommendationResponse
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
+MODEL = "openai/gpt-4o-mini"
 
 app = FastAPI(title="SearchMark API", version="0.1.0")
 
-llm = ChatOpenAI(
-    model="gpt-4o-mini",  # type: ignore[call-arg]
-)
+litellm.enable_json_schema_validation = True
 
 
 @app.get("/")
@@ -40,21 +39,25 @@ def validate_url(url: str) -> None:
 async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
     validate_url(url)
 
-    loader = AsyncHtmlLoader([url])
-    docs = await loader.aload()
-    if not docs:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+        response = await client.get(url)
+        response.raise_for_status()
+        html_content = response.text
+
+    if not html_content:
         raise HTTPException(status_code=400, detail="No content retrieved")
 
-    transformer = Html2TextTransformer()
-    docs_transformed = transformer.transform_documents(docs)
-    content = docs_transformed[0].page_content[:15000] if docs_transformed else ""
+    h = html2text.HTML2Text()
+    h.ignore_links = True
+    h.ignore_images = True
+    content = h.handle(html_content)[:15000]
 
-    structured_llm = llm.with_structured_output(AnalyzeUrlResponse)
     messages = [
-        ("system", "Analyze this web page and extract the URL, title, summary, and keywords."),
-        ("human", f"URL: {url}\n\nContent:\n{content}"),
+        {"role": "system", "content": "Analyze this web page and extract the URL, title, summary, and keywords."},
+        {"role": "user", "content": f"URL: {url}\n\nContent:\n{content}"},
     ]
-    return cast(AnalyzeUrlResponse, await structured_llm.ainvoke(messages))
+    response = await acompletion(model=MODEL, messages=messages, response_format=AnalyzeUrlResponse)
+    return AnalyzeUrlResponse.model_validate_json(response.choices[0].message.content)
 
 
 async def get_folder_recommendation(
@@ -62,8 +65,6 @@ async def get_folder_recommendation(
     folders_json: str,
 ) -> RecommendationResponse:
     """Recommend a folder based on page analysis and available folders."""
-    structured_llm = llm.with_structured_output(RecommendationResponse)
-
     folders_data = json.loads(folders_json)
     folders_toon = toon_encode(folders_data)
 
@@ -88,10 +89,11 @@ User's Folder Structure (TOON format):
 Please recommend the best folder for this bookmark."""
 
     messages = [
-        ("system", system_prompt),
-        ("human", human_message),
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": human_message},
     ]
-    return cast(RecommendationResponse, await structured_llm.ainvoke(messages))
+    response = await acompletion(model=MODEL, messages=messages, response_format=RecommendationResponse)
+    return RecommendationResponse.model_validate_json(response.choices[0].message.content)
 
 
 @app.post("/recommend", response_model=RecommendationResponse)
