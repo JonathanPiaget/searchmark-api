@@ -1,0 +1,36 @@
+{
+  "name": "Default Test Suite",
+  "description": "A collection of test URLs to validate folder recommendation quality",
+  "test_cases": [
+    {
+      "name": "python-docs",
+      "url": "https://docs.python.org/3/",
+      "description": "Python official documentation - should recommend Python or Documentation folder",
+      "expected_folder": "Technology/Programming/Python"
+    },
+    {
+      "name": "docker-hub",
+      "url": "https://hub.docker.com/",
+      "description": "Docker Hub - should recommend Docker or DevOps folder",
+      "expected_folder": "Technology/DevOps/Docker"
+    },
+    {
+      "name": "openai-api-docs",
+      "url": "https://platform.openai.com/docs",
+      "description": "OpenAI API documentation - should recommend LLMs or AI folder",
+      "expected_folder": "Technology/AI & Machine Learning/LLMs"
+    },
+    {
+      "name": "hacker-news",
+      "url": "https://news.ycombinator.com/",
+      "description": "Hacker News - could be Tech News or Startups",
+      "expected_folder": "News/Tech News"
+    },
+    {
+      "name": "github",
+      "url": "https://github.com/",
+      "description": "GitHub - could be Programming or Development Tools",
+      "expected_folder": "Tools/Development Tools"
+    }
+  ]
+}

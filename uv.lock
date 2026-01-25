@@ -2355,11 +2355,17 @@ dependencies = [
     { name = "python-toon" },
 ]
 
+[package.optional-dependencies]
+testing = [
+    { name = "rich" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "httpx" },
     { name = "pre-commit" },
     { name = "pytest" },
+    { name = "rich" },
     { name = "ruff" },
     { name = "tox-uv" },
     { name = "ty" },
@@ -2374,13 +2380,16 @@ requires-dist = [
     { name = "html2text" },
     { name = "litellm" },
     { name = "python-toon" },
+    { name = "rich", marker = "extra == 'testing'" },
 ]
+provides-extras = ["testing"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx" },
     { name = "pre-commit" },
     { name = "pytest" },
+    { name = "rich" },
     { name = "ruff" },
     { name = "tox-uv" },
     { name = "ty" },
