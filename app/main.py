@@ -63,19 +63,26 @@ async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
 async def get_folder_recommendation(
     analysis: AnalyzeUrlResponse,
     folders_json: str,
+    create_new_folder: bool = False,
 ) -> RecommendationResponse:
     """Recommend a folder based on page analysis and available folders."""
     folders_data = json.loads(folders_json)
     folders_toon = toon_encode(folders_data)
 
-    system_prompt = """You are a bookmark organization assistant. Based on the webpage analysis and the user's folder structure, recommend the best folder for this bookmark.
+    if create_new_folder:
+        system_prompt = """You are a bookmark organization assistant. Based on the webpage analysis, create a new folder for this bookmark.
 
 Rules:
-1. If a suitable existing folder matches the content, set `recommended_folder` to the full folder path and `new_folder_name` to null.
-2. If no existing folder is a good fit, set `recommended_folder` to "" (empty string) and suggest a `new_folder_name` that would be appropriate.
-3. Choose folders based on semantic relevance to the page content (title, summary, keywords).
-4. Prefer more specific folders over general ones when the content clearly fits.
-5. If the folder structure is empty or not provided, always suggest a new folder name."""
+1. You MUST create a new folder. Set `recommended_folder` to "" (empty string) and suggest a `new_folder_name`.
+2. The new folder name should be concise and descriptive, based on the page content (title, summary, keywords).
+3. Do NOT reuse any existing folder name from the folder structure."""
+    else:
+        system_prompt = """You are a bookmark organization assistant. Based on the webpage analysis and the user's folder structure, recommend the best existing folder for this bookmark.
+
+Rules:
+1. You MUST choose an existing folder. Set `recommended_folder` to the full folder path and `new_folder_name` to null.
+2. Choose folders based on semantic relevance to the page content (title, summary, keywords).
+3. Prefer more specific folders over general ones when the content clearly fits."""
 
     human_message = f"""Webpage Analysis:
 - URL: {analysis.url}
@@ -100,7 +107,7 @@ Please recommend the best folder for this bookmark."""
 async def recommend_folder(request: AnalyseUrlRequest) -> RecommendationResponse:
     analysis = await fetch_and_analyze_url(request.url)
     folders_json = json.dumps([f.model_dump() for f in request.folders])
-    recommendation = await get_folder_recommendation(analysis, folders_json)
+    recommendation = await get_folder_recommendation(analysis, folders_json, request.create_new_folder)
     return recommendation
 
 

@@ -10,6 +10,9 @@ class Folder(BaseModel):
 class AnalyseUrlRequest(BaseModel):
     url: str = Field(description="The URL to be analyzed")
     folders: list[Folder] = Field(default_factory=list, description="Folder structure")
+    create_new_folder: bool = Field(
+        default=False, description="If true, always create a new folder instead of choosing an existing one"
+    )
 
 
 class AnalyzeUrlResponse(BaseModel):
