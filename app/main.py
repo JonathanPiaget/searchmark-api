@@ -11,7 +11,7 @@ from toon import encode as toon_encode
 from app.schemas.analyze import AnalyseUrlRequest, AnalyzeUrlResponse, RecommendationResponse
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
-MODEL = "openai/gpt-4o-mini"
+MODEL = "openai/gpt-4o"
 
 app = FastAPI(title="SearchMark API", version="0.1.0")
 
