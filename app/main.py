@@ -100,7 +100,12 @@ User's Folder Structure (TOON format):
     response = await acompletion(model=MODEL, messages=messages, response_format=response_format)
     result = response_format.model_validate_json(response.choices[0].message.content)
 
-    analysis_fields = {"title": analysis.title, "summary": analysis.summary, "keywords": analysis.keywords}
+    analysis_fields = {
+        "title": analysis.title,
+        "summary": analysis.summary,
+        "keywords": analysis.keywords,
+        "reasoning": result.reasoning,
+    }
     if isinstance(result, NewFolderRecommendation):
         return RecommendationResponse(
             **analysis_fields, recommended_folder=result.recommended_folder, new_folder_name=result.new_folder_name
