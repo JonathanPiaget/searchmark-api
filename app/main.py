@@ -107,11 +107,12 @@ Rules:
     response = await acompletion(model=MODEL, messages=messages, response_format=response_format)
     result = response_format.model_validate_json(response.choices[0].message.content)
 
+    analysis_fields = {"title": analysis.title, "summary": analysis.summary, "keywords": analysis.keywords}
     if isinstance(result, NewFolderRecommendation):
         return RecommendationResponse(
-            recommended_folder=result.recommended_folder, new_folder_name=result.new_folder_name
+            **analysis_fields, recommended_folder=result.recommended_folder, new_folder_name=result.new_folder_name
         )
-    return RecommendationResponse(recommended_folder=result.recommended_folder)
+    return RecommendationResponse(**analysis_fields, recommended_folder=result.recommended_folder)
 
 
 @app.post("/recommend", response_model=RecommendationResponse)
