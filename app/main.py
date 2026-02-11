@@ -8,7 +8,13 @@ from fastapi import FastAPI, HTTPException
 from litellm import acompletion
 from toon import encode as toon_encode
 
-from app.schemas.analyze import AnalyseUrlRequest, AnalyzeUrlResponse, RecommendationResponse
+from app.schemas.analyze import (
+    AnalyseUrlRequest,
+    AnalyzeUrlResponse,
+    ExistingFolderRecommendation,
+    NewFolderRecommendation,
+    RecommendationResponse,
+)
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
 MODEL = "openai/gpt-4o"
@@ -69,21 +75,6 @@ async def get_folder_recommendation(
     folders_data = json.loads(folders_json)
     folders_toon = toon_encode(folders_data)
 
-    if create_new_folder:
-        system_prompt = """You are a bookmark organization assistant. Based on the webpage analysis, create a new folder for this bookmark.
-
-Rules:
-1. You MUST create a new folder. Set `recommended_folder` to "" (empty string) and suggest a `new_folder_name`.
-2. The new folder name should be concise and descriptive, based on the page content (title, summary, keywords).
-3. Do NOT reuse any existing folder name from the folder structure."""
-    else:
-        system_prompt = """You are a bookmark organization assistant. Based on the webpage analysis and the user's folder structure, recommend the best existing folder for this bookmark.
-
-Rules:
-1. You MUST choose an existing folder. Set `recommended_folder` to the full folder path and `new_folder_name` to null.
-2. Choose folders based on semantic relevance to the page content (title, summary, keywords).
-3. Prefer more specific folders over general ones when the content clearly fits."""
-
     human_message = f"""Webpage Analysis:
 - URL: {analysis.url}
 - Title: {analysis.title}
@@ -91,16 +82,36 @@ Rules:
 - Keywords: {", ".join(analysis.keywords)}
 
 User's Folder Structure (TOON format):
-{folders_toon}
+{folders_toon}"""
 
-Please recommend the best folder for this bookmark."""
+    if create_new_folder:
+        system_prompt = """You are a bookmark organization assistant. Based on the webpage analysis, create a new category folder for this bookmark.
+
+Rules:
+1. Choose a `recommended_folder` from the existing folder structure as the parent where the new folder will be created.
+2. The `new_folder_name` must be a BROAD CATEGORY, not a specific topic. Think general themes like "DevOps", "Machine Learning", "Web Development", "Security", "Databases" — not specific tools or technologies like "SaltStack Automation" or "React Hooks Tutorial".
+3. Do NOT reuse any existing folder name from the folder structure."""
+        response_format = NewFolderRecommendation
+    else:
+        system_prompt = """You are a bookmark organization assistant. Based on the webpage analysis and the user's folder structure, recommend the best existing folder for this bookmark.
+
+Rules:
+1. Choose folders based on semantic relevance to the page content (title, summary, keywords).
+2. Prefer more specific folders over general ones when the content clearly fits."""
+        response_format = ExistingFolderRecommendation
 
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": human_message},
     ]
-    response = await acompletion(model=MODEL, messages=messages, response_format=RecommendationResponse)
-    return RecommendationResponse.model_validate_json(response.choices[0].message.content)
+    response = await acompletion(model=MODEL, messages=messages, response_format=response_format)
+    result = response_format.model_validate_json(response.choices[0].message.content)
+
+    if isinstance(result, NewFolderRecommendation):
+        return RecommendationResponse(
+            recommended_folder=result.recommended_folder, new_folder_name=result.new_folder_name
+        )
+    return RecommendationResponse(recommended_folder=result.recommended_folder)
 
 
 @app.post("/recommend", response_model=RecommendationResponse)

@@ -22,6 +22,19 @@ class AnalyzeUrlResponse(BaseModel):
     keywords: list[str] = Field(description="AI-generated keywords/tags for the page")
 
 
+class ExistingFolderRecommendation(BaseModel):
+    """LLM response model when selecting an existing folder."""
+
+    recommended_folder: str = Field(description="Full path of the existing folder to use")
+
+
+class NewFolderRecommendation(BaseModel):
+    """LLM response model when creating a new folder."""
+
+    recommended_folder: str = Field(description="Full path of the parent folder where the new folder will be created")
+    new_folder_name: str = Field(description="Name of the new category folder to create")
+
+
 class RecommendationResponse(BaseModel):
     recommended_folder: str = Field(description="AI-recommended folder for the bookmark")
     new_folder_name: str | None = Field(default=None, description="Suggested name for a new folder, if applicable")
