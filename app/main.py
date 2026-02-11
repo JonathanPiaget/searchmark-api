@@ -61,7 +61,7 @@ async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
     content = h.handle(html_content)[:15000]
 
     messages = [
-        {"role": "system", "content": "Analyze this web page and extract the URL, title, summary, and keywords."},
+        {"role": "system", "content": "Analyze this web page and extract the URL, title and summary."},
         {"role": "user", "content": f"URL: {url}\n\nContent:\n{content}"},
     ]
     response = await acompletion(model=MODEL, messages=messages, response_format=AnalyzeUrlResponse)
@@ -81,7 +81,6 @@ async def get_folder_recommendation(
 - URL: {analysis.url}
 - Title: {analysis.title}
 - Summary: {analysis.summary}
-- Keywords: {", ".join(analysis.keywords)}
 
 User's Folder Structure (TOON format):
 {folders_toon}"""
@@ -103,7 +102,6 @@ User's Folder Structure (TOON format):
     analysis_fields = {
         "title": analysis.title,
         "summary": analysis.summary,
-        "keywords": analysis.keywords,
         "reasoning": result.reasoning,
     }
     if isinstance(result, NewFolderRecommendation):

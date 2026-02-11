@@ -19,7 +19,6 @@ class AnalyzeUrlResponse(BaseModel):
     url: str = Field(description="The analyzed URL")
     title: str = Field(description="Page title")
     summary: str = Field(description="AI-generated summary of the page content")
-    keywords: list[str] = Field(description="AI-generated keywords/tags for the page")
 
 
 class ExistingFolderRecommendation(BaseModel):
@@ -40,7 +39,6 @@ class NewFolderRecommendation(BaseModel):
 class RecommendationResponse(BaseModel):
     title: str = Field(description="Page title")
     summary: str = Field(description="AI-generated summary of the page content")
-    keywords: list[str] = Field(description="AI-generated keywords/tags for the page")
     reasoning: str = Field(description="Brief explanation of the recommendation")
     recommended_folder: str = Field(description="AI-recommended folder for the bookmark")
     new_folder_name: str | None = Field(default=None, description="Suggested name for a new folder, if applicable")
