@@ -32,6 +32,10 @@ clean-build:
     echo "🚀 Removing build artifacts"
     rm -rf dist
 
+# Get a folder recommendation for a URL
+recommend url *flags:
+    uv run searchmark {{url}} {{flags}}
+
 # Run the github actions locally using act
 ci:
     echo "🚀 Running GitHub Actions locally using act"
