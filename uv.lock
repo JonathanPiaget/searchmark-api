@@ -2376,23 +2376,23 @@ prod = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", extras = ["standard"] },
-    { name = "html2text" },
-    { name = "litellm" },
-    { name = "python-toon" },
+    { name = "fastapi", extras = ["standard"], specifier = "==0.128.0" },
+    { name = "html2text", specifier = "==2025.4.15" },
+    { name = "litellm", specifier = "==1.81.0" },
+    { name = "python-toon", specifier = "==0.1.3" },
     { name = "rich", marker = "extra == 'testing'" },
 ]
 provides-extras = ["testing"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "rich" },
-    { name = "ruff" },
-    { name = "tox-uv" },
-    { name = "ty" },
+    { name = "httpx", specifier = "==0.28.1" },
+    { name = "pre-commit", specifier = "==4.5.1" },
+    { name = "pytest", specifier = "==9.0.2" },
+    { name = "rich", specifier = "==14.2.0" },
+    { name = "ruff", specifier = "==0.14.11" },
+    { name = "tox-uv", specifier = "==1.29.0" },
+    { name = "ty", specifier = "==0.0.10" },
 ]
 prod = [{ name = "sentry-sdk" }]
 

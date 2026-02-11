@@ -7,10 +7,10 @@ readme = "README.md"
 keywords = ['python']
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "fastapi[standard]",
-    "litellm",
-    "html2text",
-    "python-toon",
+    "fastapi[standard]==0.128.0",
+    "litellm==1.81.0",
+    "html2text==2025.4.15",
+    "python-toon==0.1.3",
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -37,13 +37,13 @@ testing = ["rich"]
 
 [dependency-groups]
 dev = [
-    "pytest",
-    "httpx",
-    "pre-commit",
-    "tox-uv",
-    "ty",
-    "ruff",
-    "rich",
+    "pytest==9.0.2",
+    "httpx==0.28.1",
+    "pre-commit==4.5.1",
+    "tox-uv==1.29.0",
+    "ty==0.0.10",
+    "ruff==0.14.11",
+    "rich==14.2.0",
 ]
 prod = ["sentry-sdk"]
 
