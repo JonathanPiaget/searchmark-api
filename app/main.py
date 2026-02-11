@@ -19,7 +19,7 @@ from app.schemas.analyze import (
 from .prompts import EXISTING_FOLDER_RECOMMENDATION_PROMPT, NEW_FOLDER_RECOMMENDATION_PROMPT
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
-MODEL = "openai/gpt-4o"
+MODEL = "openai/gpt-4.1"
 
 app = FastAPI(title="SearchMark API", version="0.1.0")
 
