@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from app.main import fetch_and_analyze_url, get_folder_recommendation
-from app.testing.parsers import folders_to_json, parse_bookmarks_file
+from app.parsers import folders_to_json, parse_bookmarks_file
 
 load_dotenv(".envs/.local/.fastapi")
 
