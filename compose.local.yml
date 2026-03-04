@@ -17,12 +17,28 @@ services:
       postgres:
         condition: service_healthy
         restart: true
+      valkey:
+        condition: service_healthy
+        restart: true
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  valkey:
+    image: valkey/valkey:8
+    ports:
+      - "6379:6379"
+    volumes:
+      - local_valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   postgres:
     build:
@@ -43,5 +59,6 @@ services:
       start_period: 20s
 
 volumes:
+  local_valkey_data:
   local_postgres_data:
   local_postgres_data_backups:

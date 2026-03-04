@@ -16,6 +16,7 @@ from app.schemas.analyze import (
     RecommendationResponse,
 )
 
+from . import cache
 from .prompts import EXISTING_FOLDER_RECOMMENDATION_PROMPT, NEW_FOLDER_RECOMMENDATION_PROMPT
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -47,6 +48,10 @@ def validate_url(url: str) -> None:
 async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
     validate_url(url)
 
+    cached = await cache.get_analysis(url)
+    if cached is not None:
+        return cached
+
     async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
         response = await client.get(url)
         response.raise_for_status()
@@ -65,7 +70,9 @@ async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
         {"role": "user", "content": f"URL: {url}\n\nContent:\n{content}"},
     ]
     response = await acompletion(model=MODEL, messages=messages, response_format=AnalyzeUrlResponse)
-    return AnalyzeUrlResponse.model_validate_json(response.choices[0].message.content)
+    result = AnalyzeUrlResponse.model_validate_json(response.choices[0].message.content)
+    await cache.set_analysis(url, result)
+    return result
 
 
 async def get_folder_recommendation(

@@ -12,6 +12,7 @@ dependencies = [
     "html2text==2025.4.15",
     "python-toon==0.1.3",
     "typer",
+    "redis[hiredis]>=5.0",
 ]
 classifiers = [
     "Intended Audience :: Developers",
