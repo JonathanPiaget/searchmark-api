@@ -14,8 +14,6 @@ check:
     uv lock --locked
     echo "🚀 Linting code: Running pre-commit"
     uv run pre-commit run -a
-    echo "🚀 Static type checking: Running ty"
-    uv run ty check
 
 # Test the code with pytest
 test:

@@ -34,7 +34,7 @@ class TestAnalyseUrlRequest:
     def test_with_folders(self):
         req = AnalyseUrlRequest(
             url="https://example.com",
-            folders=[{"id": "1", "name": "Dev"}],
+            folders=[Folder(id="1", name="Dev")],
             create_new_folder=True,
         )
         assert len(req.folders) == 1
@@ -42,7 +42,7 @@ class TestAnalyseUrlRequest:
 
     def test_missing_url(self):
         with pytest.raises(ValidationError):
-            AnalyseUrlRequest()
+            AnalyseUrlRequest()  # type: ignore[missing-argument]
 
 
 class TestAnalyzeUrlResponse:
