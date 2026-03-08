@@ -32,7 +32,11 @@ clean-build:
 
 # Get a folder recommendation for a URL
 recommend url *flags:
-    uv run searchmark {{url}} {{flags}}
+    uv run searchmark recommend {{url}} {{flags}}
+
+# Compare existing-folder vs new-folder recommendations
+compare url *flags:
+    uv run searchmark compare {{url}} {{flags}}
 
 # Run the github actions locally using act
 ci:
