@@ -21,7 +21,7 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.15.6"
+    rev: "v0.15.10"
     hooks:
       - id: ruff-check
         args: [ --exit-non-zero-on-fix ]
@@ -29,13 +29,13 @@ repos:
 
   - repo: https://github.com/astral-sh/uv-pre-commit
     # uv version.
-    rev: 0.10.9
+    rev: 0.11.6
     hooks:
       - id: uv-lock
         args: ['--frozen']
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
+    rev: v8.30.0
     hooks:
       - id: gitleaks
 
@@ -49,6 +49,6 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/rhysd/actionlint
-    rev: "v1.7.11"
+    rev: "v1.7.12"
     hooks:
       - id: actionlint
