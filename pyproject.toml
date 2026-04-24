@@ -8,7 +8,7 @@ keywords = ['python']
 requires-python = ">=3.10,<4.0"
 dependencies = [
     "fastapi[standard]==0.133.0",
-    "litellm>=1.81",
+    "litellm>=1.83.7",
     "html2text>=025.4",
     "python-toon>=0.1",
     "typer",
