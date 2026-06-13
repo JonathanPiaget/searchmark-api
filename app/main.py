@@ -1,4 +1,5 @@
 import json
+import ssl
 from urllib.parse import urlparse
 
 import html2text
@@ -21,6 +22,15 @@ from .prompts import EXISTING_FOLDER_RECOMMENDATION_PROMPT, NEW_FOLDER_RECOMMEND
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
 MODEL = "openai/gpt-4.1"
+
+
+def _create_ssl_context() -> ssl.SSLContext:
+    context = ssl.create_default_context()
+    context.set_ciphers("DEFAULT@SECLEVEL=1")
+    return context
+
+
+SSL_CONTEXT = _create_ssl_context()
 
 app = FastAPI(title="SearchMark API", version="0.1.0")
 
@@ -52,7 +62,7 @@ async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
     if cached is not None:
         return cached
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=30.0, verify=SSL_CONTEXT) as client:
         response = await client.get(url)
         response.raise_for_status()
         html_content = response.text
