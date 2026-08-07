@@ -21,7 +21,7 @@ from . import cache
 from .prompts import EXISTING_FOLDER_RECOMMENDATION_PROMPT, NEW_FOLDER_RECOMMENDATION_PROMPT
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
-MODEL = "openai/gpt-4.1"
+MODEL = "openai/gpt-5.6-luna"
 
 
 def _create_ssl_context() -> ssl.SSLContext:
