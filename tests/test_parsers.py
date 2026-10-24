@@ -1,7 +1,35 @@
 import json
 
-from app.parsers import folders_to_json, parse_bookmarks_file
+from app.parsers import firefox_leaves, folders_to_json, parse_bookmarks_file
 from app.schemas.analyze import Folder
+
+FIREFOX_EXPORT = {
+    "guid": "root________",
+    "title": "",
+    "type": "text/x-moz-place-container",
+    "children": [
+        {
+            "guid": "menu________",
+            "title": "menu",
+            "type": "text/x-moz-place-container",
+            "children": [
+                {
+                    "guid": "abc",
+                    "title": "Dev",
+                    "type": "text/x-moz-place-container",
+                    "children": [
+                        {
+                            "guid": "xyz",
+                            "title": "Example",
+                            "type": "text/x-moz-place",
+                            "uri": "https://example.com",
+                        }
+                    ],
+                }
+            ],
+        },
+    ],
+}
 
 
 class TestParseBookmarksFile:
@@ -32,33 +60,7 @@ class TestParseBookmarksFile:
         assert folders[0].children[0].name == "Python"
 
     def test_parse_firefox_places_format(self, tmp_path):
-        data = {
-            "guid": "root________",
-            "title": "",
-            "type": "text/x-moz-place-container",
-            "children": [
-                {
-                    "guid": "menu________",
-                    "title": "menu",
-                    "type": "text/x-moz-place-container",
-                    "children": [
-                        {
-                            "guid": "abc",
-                            "title": "Dev",
-                            "type": "text/x-moz-place-container",
-                            "children": [
-                                {
-                                    "guid": "xyz",
-                                    "title": "Example",
-                                    "type": "text/x-moz-place",
-                                    "uri": "https://example.com",
-                                }
-                            ],
-                        }
-                    ],
-                },
-            ],
-        }
+        data = FIREFOX_EXPORT
         path = tmp_path / "bookmarks.json"
         path.write_text(json.dumps(data))
 
@@ -69,6 +71,33 @@ class TestParseBookmarksFile:
         assert len(folders[0].children) == 1
         assert folders[0].children[0].name == "Dev"
         assert folders[0].children[0].children == []
+
+
+class TestFirefoxLeaves:
+    def test_leaves_with_parent_path(self, tmp_path):
+        data = json.loads(json.dumps(FIREFOX_EXPORT))
+        dev = data["children"][0]["children"][0]
+        dev["children"] += [
+            {"type": "text/x-moz-place", "uri": "place:sort=8", "title": "Smart"},
+            {
+                "guid": "m",
+                "title": "À trier",
+                "type": "text/x-moz-place-container",
+                "children": [
+                    {"type": "text/x-moz-place", "uri": "https://skip.me", "title": "x"},
+                    {
+                        "guid": "n",
+                        "title": "Nested",
+                        "type": "text/x-moz-place-container",
+                        "children": [{"type": "text/x-moz-place", "uri": "https://skip.too", "title": "y"}],
+                    },
+                ],
+            },
+        ]
+        path = tmp_path / "bookmarks.json"
+        path.write_text(json.dumps(data))
+
+        assert firefox_leaves(path) == [("https://example.com", "menu/Dev")]
 
 
 class TestFoldersToJson:

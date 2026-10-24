@@ -35,3 +35,28 @@ def _moz_children_to_folders(node: dict[str, Any]) -> list[Folder]:
 
 def folders_to_json(folders: list[Folder]) -> str:
     return json.dumps([f.model_dump() for f in folders], indent=2)
+
+
+CATCH_ALL_WORDS = ("trier", "divers", "misc", "unsorted")
+
+
+def firefox_leaves(path: str | Path) -> list[tuple[str, str]]:
+    """Return (url, parent folder path) for every http(s) bookmark of a Firefox JSON export.
+
+    Bookmarks under a catch-all folder (any ancestor title containing one of
+    CATCH_ALL_WORDS) are skipped: they carry no meaningful expected folder.
+    """
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    leaves: list[tuple[str, str]] = []
+
+    def walk(node: dict[str, Any], parents: list[str]) -> None:
+        for child in node.get("children") or []:
+            if child.get("type") == MOZ_FOLDER_TYPE:
+                title = child.get("title") or ""
+                if not any(w in title.lower() for w in CATCH_ALL_WORDS):
+                    walk(child, [*parents, title])
+            elif str(child.get("uri", "")).startswith(("http://", "https://")):
+                leaves.append((child["uri"], "/".join(parents)))
+
+    walk(data, [])
+    return leaves
