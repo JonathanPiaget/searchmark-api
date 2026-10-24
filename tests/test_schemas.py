@@ -42,7 +42,7 @@ class TestAnalyseUrlRequest:
 
     def test_missing_url(self):
         with pytest.raises(ValidationError):
-            AnalyseUrlRequest()  # type: ignore[missing-argument]
+            AnalyseUrlRequest()  # ty: ignore[missing-argument]
 
 
 class TestAnalyzeUrlResponse:
