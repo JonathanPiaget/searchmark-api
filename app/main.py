@@ -1,12 +1,13 @@
 import json
 import ssl
+from typing import cast
 from urllib.parse import urlparse
 
 import html2text
 import httpx
 import litellm
 from fastapi import FastAPI, HTTPException
-from litellm import acompletion
+from litellm import ModelResponse, acompletion
 from toon import encode as toon_encode
 
 from app.schemas.analyze import (
@@ -79,8 +80,11 @@ async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
         {"role": "system", "content": "Analyze this web page and extract the URL, title and summary."},
         {"role": "user", "content": f"URL: {url}\n\nContent:\n{content}"},
     ]
-    response = await acompletion(model=MODEL, messages=messages, response_format=AnalyzeUrlResponse)
-    result = AnalyzeUrlResponse.model_validate_json(response.choices[0].message.content)
+    # non-streaming call, so never a CustomStreamWrapper
+    response = cast(
+        ModelResponse, await acompletion(model=MODEL, messages=messages, response_format=AnalyzeUrlResponse)
+    )
+    result = AnalyzeUrlResponse.model_validate_json(response.choices[0].message.content or "")
     await cache.set_analysis(url, result)
     return result
 
@@ -143,8 +147,9 @@ User's Folder Structure (TOON format):
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": human_message},
     ]
-    response = await acompletion(model=MODEL, messages=messages, response_format=response_format)
-    result = response_format.model_validate_json(response.choices[0].message.content)
+    # non-streaming call, so never a CustomStreamWrapper
+    response = cast(ModelResponse, await acompletion(model=MODEL, messages=messages, response_format=response_format))
+    result = response_format.model_validate_json(response.choices[0].message.content or "")
     result.recommended_folder = resolve_folder_path(result.recommended_folder, _folder_paths(folders_data))
 
     analysis_fields = {
