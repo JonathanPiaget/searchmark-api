@@ -1,6 +1,9 @@
 """Evaluate /recommend folder choice against the user's own Firefox bookmarks.
 
-Usage: uv run python scripts/eval_recommend.py fixtures/bookmarks.json --sample 25 --seed 1
+Usage:
+  uv run python scripts/eval_recommend.py run fixtures/bookmarks.json --set fixtures/eval/golden.jsonl
+  SEARCHMARK_MODEL=openai/gpt-4o uv run python scripts/eval_recommend.py run fixtures/bookmarks.json --set ...
+  uv run python scripts/eval_recommend.py compare fixtures/eval/golden-*.jsonl
 """
 
 import asyncio
@@ -16,10 +19,15 @@ import typer
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
-from app.main import fetch_and_analyze_url, get_folder_recommendation
+from app.main import MODEL, fetch_and_analyze_url, get_folder_recommendation
 from app.parsers import firefox_leaves, folders_to_json, parse_bookmarks_file
 
 load_dotenv(".envs/.local/.fastapi")
+app = typer.Typer(no_args_is_help=True)
+
+
+def read_jsonl(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def verdict(expected: str, got: str) -> str:
@@ -45,14 +53,23 @@ async def evaluate_one(url: str, expected: str, folders_json: str) -> dict:
     return row
 
 
-async def run(export: Path, sample: int, seed: int | None, out: Path) -> None:
+async def run(export: Path, sample: int, seed: int | None, out: Path, fixed_set: Path | None) -> None:
     folders_json = folders_to_json(parse_bookmarks_file(export))
-    picked = random.Random(seed).sample(firefox_leaves(export), sample)  # noqa: S311 - sampling, not crypto
-    rows = []
+    if fixed_set:
+        leaves = [(r["url"], r["expected"]) for r in read_jsonl(fixed_set)]
+        sample = len(leaves)
+    else:
+        leaves = firefox_leaves(export)
+        random.Random(seed).shuffle(leaves)  # noqa: S311 - sampling, not crypto
+    rows: list[dict] = []
+    scored = 0
     with out.open("w", encoding="utf-8") as f:
-        for i, (url, expected) in enumerate(picked, 1):
-            typer.echo(f"[{i}/{sample}] {url}", err=True)
+        for url, expected in leaves:  # keep drawing so skipped pages are replaced
+            if scored >= sample:
+                break
+            typer.echo(f"[{scored + 1}/{sample}] {url}", err=True)
             row = await evaluate_one(url, expected, folders_json)
+            scored += row["status"] != "skipped"
             rows.append(row)
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
@@ -65,14 +82,38 @@ async def run(export: Path, sample: int, seed: int | None, out: Path) -> None:
             typer.echo(f"  {r['url']}\n    expected: {r['expected']}\n    got:      {r['got']}")
 
 
-def main(
+@app.command("run")
+def run_cmd(
     export: Annotated[Path, typer.Argument(help="Firefox JSON bookmarks export", exists=True)],
-    sample: Annotated[int, typer.Option(help="Number of bookmarks to evaluate")] = 25,
+    sample: Annotated[int, typer.Option(help="Number of scored bookmarks (skipped ones are replaced)")] = 25,
     seed: Annotated[int | None, typer.Option(help="Random seed for reproducible sampling")] = None,
-    out: Annotated[Path, typer.Option(help="JSONL output file")] = Path("fixtures/eval/recommend.jsonl"),
+    out: Annotated[Path | None, typer.Option(help="JSONL output (default: fixtures/eval/<set>-<model>.jsonl)")] = None,
+    fixed_set: Annotated[
+        Path | None, typer.Option("--set", help="JSONL of {url, expected}: evaluate exactly these instead of sampling")
+    ] = None,
 ) -> None:
-    asyncio.run(run(export, sample, seed, out))
+    """Evaluate the current model (override with SEARCHMARK_MODEL) and write one JSONL row per URL."""
+    out = out or Path(f"fixtures/eval/{fixed_set.stem if fixed_set else 'recommend'}-{MODEL.rsplit('/', 1)[-1]}.jsonl")
+    typer.echo(f"model: {MODEL}  ->  {out}", err=True)
+    asyncio.run(run(export, sample, seed, out, fixed_set))
+
+
+@app.command()
+def compare(results: Annotated[list[Path], typer.Argument(help="Result JSONL files, one per model")]) -> None:
+    """Side-by-side status per URL and totals for several result files."""
+    runs = {p.stem: {r["url"]: r for r in read_jsonl(p)} for p in results}
+    urls = sorted({u for rows in runs.values() for u in rows})
+    width = max(len(n) for n in runs)
+    for url in urls:
+        cells = [f"{runs[n].get(url, {}).get('status', '-'):8}" for n in runs]
+        typer.echo(f"{' '.join(cells)}  {url}")
+    typer.echo("\n" + "  ".join(f"{s:8}" for s in ("exact", "related", "miss", "skipped", "median_ms")) + "  model")
+    for name, rows in runs.items():
+        counts = [sum(r["status"] == s for r in rows.values()) for s in ("exact", "related", "miss", "skipped")]
+        lat = [r["latency_ms"] for r in rows.values() if r["latency_ms"] is not None]
+        median = statistics.median(lat) if lat else 0
+        typer.echo("  ".join(f"{c:<8}" for c in [*counts, round(median)]) + f"  {name:<{width}}")
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    app()

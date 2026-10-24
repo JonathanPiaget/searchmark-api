@@ -1,0 +1,20 @@
+{"url": "https://github.com/aquasecurity/trivy", "expected": "toolbar/Computing/Docker/Tools/Security", "note": "container scanner: Docker/Tools/Security, not Security/Scanners nor Kubernetes/Security"}
+{"url": "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html", "expected": "toolbar/Computing/Docker/Security - good practices", "note": "guide about Docker, not Security/Checklists & Guides"}
+{"url": "https://daisyui.com/", "expected": "toolbar/Computing/WebDev/CSS/Frameworks/Tailwind", "note": "Tailwind plugin: go one level deeper than CSS/Frameworks"}
+{"url": "https://keepassxc.org/", "expected": "toolbar/Computing/Security/Secret management/Password managers", "note": "not Privacy"}
+{"url": "https://onetimesecret.com/", "expected": "toolbar/Computing/Security/Secret management/Secrets Sharing", "note": "sibling of Password managers; also tempting: Privacy/Temporary services"}
+{"url": "https://github.com/Radarr/Radarr", "expected": "toolbar/Computing/Self hosting - server administration/Self hosting apps/Streaming - movies", "note": "self-hosted movie manager, not Privé/Cinéma"}
+{"url": "https://github.com/immich-app/immich", "expected": "toolbar/Computing/Self hosting - server administration/Self hosting apps/Image libraries", "note": "self-hosted photo library, not Computing/Image / video"}
+{"url": "https://kefirlandia.org/fr/home/index.php", "expected": "toolbar/Privé/Alimentation - cuisine/Kéfir", "note": "French non-tech; specific subfolder exists, not Sites de recettes"}
+{"url": "https://www.ynab.com/", "expected": "toolbar/Finance/Apps/Apps de budgeting", "note": "budgeting, not Apps de compatabilité"}
+{"url": "https://github.com/kubernetes-sigs/kind/", "expected": "toolbar/Computing/Kubernetes/Tools/Local clusters", "note": "runs k8s in Docker: Kubernetes, not Docker/Tools/Runtimes"}
+{"url": "https://github.com/brouberol/marcel", "expected": "toolbar/Computing/Humour", "note": "French Docker parody: Humour, not Docker/Tools"}
+{"url": "https://www.kayak.com/", "expected": "toolbar/Privé/Transports - voyages/comparateurs vols", "note": "non-tech; not Canada/Transports nor Transports publics"}
+{"url": "https://github.com/sharkdp/bat", "expected": "toolbar/Computing/Commandline - Terminal tools/Modern Unix Replacements", "note": "cat clone, not File Navigation & Search"}
+{"url": "https://github.com/wg-easy/wg-easy", "expected": "toolbar/Computing/Self hosting - server administration/Self hosting apps/VPNs", "note": "self-hosted VPN server, not Privacy/Network - VPNs"}
+{"url": "https://www.pgcli.com/", "expected": "toolbar/Computing/DataBases/CLIs", "note": "generic DB CLI folder, not PgSQL/Tools"}
+{"url": "https://github.com/louislam/uptime-kuma", "expected": "toolbar/Computing/Self hosting - server administration/Server administration/Monitoring", "note": "not Logging - Monitoring nor Linux/Monitoring"}
+{"url": "https://github.com/jazzband/django-auditlog", "expected": "toolbar/Django/Librairies - apps/Track changes - history", "note": "among 40+ Django sibling folders; not Models nor Stats"}
+{"url": "https://www.canada.ca/fr/immigration-refugies-citoyennete/services/demande/compte.html", "expected": "toolbar/Canada/Immigration", "note": "French government page"}
+{"url": "https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher", "expected": "toolbar/Computing/Linux/Gaming", "note": "game launcher for Linux, not Privé/Jeux - Gaming"}
+{"url": "https://github.com/jesseduffield/lazygit", "expected": "toolbar/Computing/Git/Tools/GUIs", "note": "TUI for git: Git/Tools/GUIs, not Commandline tools"}

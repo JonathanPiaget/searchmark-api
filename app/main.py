@@ -1,4 +1,5 @@
 import json
+import os
 import ssl
 from typing import cast
 from urllib.parse import urlparse
@@ -22,7 +23,7 @@ from . import cache
 from .prompts import EXISTING_FOLDER_RECOMMENDATION_PROMPT, NEW_FOLDER_RECOMMENDATION_PROMPT
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
-MODEL = "openai/gpt-5.6-luna"
+MODEL = os.environ.get("SEARCHMARK_MODEL", "openai/gpt-5.6-luna")
 
 
 def _create_ssl_context() -> ssl.SSLContext:
