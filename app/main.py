@@ -85,6 +85,36 @@ async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
     return result
 
 
+def _folder_paths(folders: list[dict], prefix: str = "") -> set[str]:
+    paths: set[str] = set()
+    for f in folders:
+        path = f"{prefix}{f['name']}"
+        paths.add(path)
+        paths.update(_folder_paths(f.get("children") or [], f"{path}/"))
+    return paths
+
+
+def _norm(path: str) -> str:
+    return "/".join(p.strip() for p in path.split("/") if p.strip())
+
+
+def resolve_folder_path(raw: str, paths: set[str]) -> str:
+    """Map the LLM's folder path onto an existing one.
+
+    The model often strips the root, adds spaces around "/" or skips a level.
+    Longest tail of the given path that identifies exactly one folder wins.
+    Both sides are normalized so folder names containing " / " still match.
+    """
+    by_norm = {_norm(p): p for p in paths}
+    parts = _norm(raw).split("/")
+    for k in range(len(parts), 0, -1):
+        tail = "/".join(parts[-k:])
+        matches = [p for n, p in by_norm.items() if n == tail or n.endswith("/" + tail)]
+        if len(matches) == 1:
+            return matches[0]
+    return "/".join(parts)
+
+
 async def get_folder_recommendation(
     analysis: AnalyzeUrlResponse,
     folders_json: str,
@@ -115,6 +145,7 @@ User's Folder Structure (TOON format):
     ]
     response = await acompletion(model=MODEL, messages=messages, response_format=response_format)
     result = response_format.model_validate_json(response.choices[0].message.content)
+    result.recommended_folder = resolve_folder_path(result.recommended_folder, _folder_paths(folders_data))
 
     analysis_fields = {
         "title": analysis.title,

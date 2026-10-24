@@ -2,7 +2,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app.main import app, validate_url
+from app.main import _folder_paths, app, resolve_folder_path, validate_url
 
 client = TestClient(app)
 
@@ -53,3 +53,44 @@ class TestRecommendEndpoint:
     def test_missing_url(self):
         resp = client.post("/recommend", json={})
         assert resp.status_code == 422
+
+
+class TestResolveFolderPath:
+    paths = _folder_paths([
+        {
+            "name": "toolbar",
+            "children": [
+                {"name": "Computing", "children": [{"name": "Design", "children": [{"name": "Colors"}]}]},
+                {"name": "Django", "children": [{"name": "Librairies - apps", "children": [{"name": "Shell"}]}]},
+                {"name": "Privé", "children": [{"name": "Design"}]},
+                {"name": "Articles", "children": [{"name": "Entretien technique / HR"}]},
+                {"name": "Management", "children": [{"name": "HR"}]},
+            ],
+        }
+    ])
+
+    def test_exact_path_kept(self):
+        assert resolve_folder_path("toolbar/Computing/Design", self.paths) == "toolbar/Computing/Design"
+
+    def test_spaces_around_separator(self):
+        assert resolve_folder_path("toolbar / Django / Librairies - apps / Shell", self.paths) == (
+            "toolbar/Django/Librairies - apps/Shell"
+        )
+
+    def test_missing_root(self):
+        assert resolve_folder_path("Computing/Design/Colors", self.paths) == "toolbar/Computing/Design/Colors"
+
+    def test_skipped_level(self):
+        assert resolve_folder_path("toolbar/Design/Colors", self.paths) == "toolbar/Computing/Design/Colors"
+
+    def test_slash_in_folder_name(self):
+        assert resolve_folder_path("toolbar/Articles/Entretien technique / HR", self.paths) == (
+            "toolbar/Articles/Entretien technique / HR"
+        )
+        assert resolve_folder_path("Management/HR", self.paths) == "toolbar/Management/HR"
+
+    def test_ambiguous_tail_stays_as_given(self):
+        assert resolve_folder_path("Design", self.paths) == "Design"
+
+    def test_unknown_path_stays_normalized(self):
+        assert resolve_folder_path("Nope / Nowhere", self.paths) == "Nope/Nowhere"
