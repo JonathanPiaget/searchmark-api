@@ -36,7 +36,7 @@ async def evaluate_one(url: str, expected: str, folders_json: str) -> dict:
     try:
         analysis = await fetch_and_analyze_url(url)
     except (httpx.HTTPError, HTTPException) as e:
-        row["error"] = str(e)[:200]
+        row["error"] = repr(e)[:200]  # repr: httpx timeouts have an empty str()
         return row
     start = time.perf_counter()
     rec = await get_folder_recommendation(analysis, folders_json)
