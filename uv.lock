@@ -2982,6 +2982,7 @@ dependencies = [
     { name = "litellm" },
     { name = "python-toon" },
     { name = "redis", extra = ["hiredis"] },
+    { name = "sentry-sdk" },
     { name = "typer" },
 ]
 
@@ -3000,9 +3001,6 @@ dev = [
     { name = "tox-uv" },
     { name = "ty" },
 ]
-prod = [
-    { name = "sentry-sdk" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -3012,6 +3010,7 @@ requires-dist = [
     { name = "python-toon", specifier = ">=0.1" },
     { name = "redis", extras = ["hiredis"], specifier = ">=5.0" },
     { name = "rich", marker = "extra == 'testing'" },
+    { name = "sentry-sdk", specifier = ">=2" },
     { name = "typer" },
 ]
 provides-extras = ["testing"]
@@ -3026,7 +3025,6 @@ dev = [
     { name = "tox-uv", specifier = "==1.36.1" },
     { name = "ty", specifier = "==0.0.89" },
 ]
-prod = [{ name = "sentry-sdk" }]
 
 [[package]]
 name = "sentry-sdk"

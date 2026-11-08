@@ -1,14 +1,17 @@
 import json
+import logging
 import os
 import ssl
-from typing import cast
+from typing import TypeVar, cast
 from urllib.parse import urlparse
 
 import html2text
 import httpx
 import litellm
+import sentry_sdk
 from fastapi import FastAPI, HTTPException
 from litellm import ModelResponse, acompletion
+from pydantic import BaseModel
 from toon import encode as toon_encode
 
 from app.schemas.analyze import (
@@ -24,6 +27,13 @@ from .prompts import EXISTING_FOLDER_RECOMMENDATION_PROMPT, NEW_FOLDER_RECOMMEND
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
 MODEL = os.environ.get("SEARCHMARK_MODEL", "openai/gpt-5.6-luna")
+MAX_FOLDERS = int(os.environ.get("SEARCHMARK_MAX_FOLDERS", "2000"))
+COST_ALERT_USD = float(os.environ.get("SEARCHMARK_COST_ALERT_USD", "0.02"))
+T = TypeVar("T", bound=BaseModel)
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
+sentry_sdk.init(dsn=os.environ.get("SENTRY_DSN"))  # no DSN = disabled
 
 
 def _create_ssl_context() -> ssl.SSLContext:
@@ -37,6 +47,28 @@ SSL_CONTEXT = _create_ssl_context()
 app = FastAPI(title="SearchMark API", version="0.1.0")
 
 litellm.enable_json_schema_validation = True
+
+
+async def _complete(messages: list[dict], response_format: type[T]) -> T:
+    """One structured LLM call, bounded in output and time, with its real cost logged."""
+    # non-streaming call, so never a CustomStreamWrapper
+    response = cast(
+        ModelResponse,
+        await acompletion(model=MODEL, messages=messages, response_format=response_format, max_tokens=300, timeout=30),
+    )
+    cost = response._hidden_params.get("response_cost")
+    usage = getattr(response, "usage", None)
+    cached = getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", None)
+    log.info(
+        "llm model=%s cost_usd=%s prompt_tokens=%s cached_tokens=%s",
+        MODEL,
+        cost,
+        getattr(usage, "prompt_tokens", None),
+        cached,
+    )
+    if cost is not None and cost > COST_ALERT_USD:
+        sentry_sdk.capture_message(f"LLM call cost ${cost:.4f} > ${COST_ALERT_USD} ({MODEL})")
+    return response_format.model_validate_json(response.choices[0].message.content or "")
 
 
 @app.get("/")
@@ -81,11 +113,7 @@ async def fetch_and_analyze_url(url: str) -> AnalyzeUrlResponse:
         {"role": "system", "content": "Analyze this web page and extract the URL, title and summary."},
         {"role": "user", "content": f"URL: {url}\n\nContent:\n{content}"},
     ]
-    # non-streaming call, so never a CustomStreamWrapper
-    response = cast(
-        ModelResponse, await acompletion(model=MODEL, messages=messages, response_format=AnalyzeUrlResponse)
-    )
-    result = AnalyzeUrlResponse.model_validate_json(response.choices[0].message.content or "")
+    result = await _complete(messages, AnalyzeUrlResponse)
     await cache.set_analysis(url, result)
     return result
 
@@ -129,13 +157,14 @@ async def get_folder_recommendation(
     folders_data = json.loads(folders_json)
     folders_toon = toon_encode(folders_data)
 
-    human_message = f"""Webpage Analysis:
+    # tree first: it is the stable prefix per user, so providers can cache it
+    human_message = f"""User's Folder Structure (TOON format):
+{folders_toon}
+
+Webpage Analysis:
 - URL: {analysis.url}
 - Title: {analysis.title}
-- Summary: {analysis.summary}
-
-User's Folder Structure (TOON format):
-{folders_toon}"""
+- Summary: {analysis.summary}"""
 
     if create_new_folder:
         system_prompt = NEW_FOLDER_RECOMMENDATION_PROMPT
@@ -148,9 +177,7 @@ User's Folder Structure (TOON format):
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": human_message},
     ]
-    # non-streaming call, so never a CustomStreamWrapper
-    response = cast(ModelResponse, await acompletion(model=MODEL, messages=messages, response_format=response_format))
-    result = response_format.model_validate_json(response.choices[0].message.content or "")
+    result = await _complete(messages, response_format)
     result.recommended_folder = resolve_folder_path(result.recommended_folder, _folder_paths(folders_data))
 
     analysis_fields = {
@@ -167,8 +194,11 @@ User's Folder Structure (TOON format):
 
 @app.post("/recommend", response_model=RecommendationResponse)
 async def recommend_folder(request: AnalyseUrlRequest) -> RecommendationResponse:
+    folders = [f.model_dump() for f in request.folders]
+    if len(_folder_paths(folders)) > MAX_FOLDERS:
+        raise HTTPException(status_code=413, detail=f"Too many folders (max {MAX_FOLDERS})")
     analysis = await fetch_and_analyze_url(request.url)
-    folders_json = json.dumps([f.model_dump() for f in request.folders])
+    folders_json = json.dumps(folders)
     recommendation = await get_folder_recommendation(analysis, folders_json, request.create_new_folder)
     return recommendation
 

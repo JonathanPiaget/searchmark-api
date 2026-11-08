@@ -33,13 +33,13 @@ Assumptions to confirm with the extension side: the verify page shows the API ke
 - [x] tasks/v1-paid-llm-recommendation.md (this file)
 
 ### 1. Cost guards, cacheable prompt, cost log, Sentry
-- [ ] `/recommend`: count folders recursively, 413 when > 2 000 (`SEARCHMARK_MAX_FOLDERS`)
-- [ ] Both `acompletion` calls: `max_tokens=300`, `timeout=30`
-- [ ] `get_folder_recommendation`: tree before analysis in the user message (system, tree, analysis)
-- [ ] Log `response_cost` per LLM call; `sentry_sdk.capture_message` when above `SEARCHMARK_COST_ALERT_USD`
-- [ ] `sentry_sdk.init` when `SENTRY_DSN` is set; `sentry-sdk[fastapi]` moved to main deps
-- [ ] Tests: 413 on oversized tree; message order; cost log/alert with a mocked response
-- [ ] Verify: `just test`, one real `just recommend` on a URL, check cached tokens appear in usage on the second call
+- [x] `/recommend`: count folders recursively, 413 when > 2 000 (`SEARCHMARK_MAX_FOLDERS`)
+- [x] Both LLM calls go through `_complete`: `max_tokens=300`, `timeout=30`
+- [x] `get_folder_recommendation`: tree before analysis in the user message (system, tree, analysis)
+- [x] Log `response_cost`, prompt and cached tokens per LLM call; `sentry_sdk.capture_message` when above `SEARCHMARK_COST_ALERT_USD`
+- [x] `sentry_sdk.init(dsn=SENTRY_DSN)` (no DSN = disabled); `sentry-sdk` moved to main deps, `prod` group and Dockerfile flag removed
+- [x] Tests: 413 on oversized tree; bounded call; cost alert on/off; message order
+- [x] Verify: 42 tests green, `pre-commit run -a` green, 3 real step-2 calls on the fixture tree (see Review)
 
 ### 2a. Golden set to 50
 - [ ] One-off script in the scratchpad (not committed): stratified draw of ~40 leaves over top-level folders, HEAD request to drop dead pages, keep 30
@@ -78,4 +78,13 @@ Assumptions to confirm with the extension side: the verify page shows the API ke
 
 ## Review
 
-(filled in as deliveries land)
+### Delivery 1 (2026-11-08)
+Measured on fixtures/bookmarks.json (894 folders) with gpt-5.6-luna, 3 consecutive step-2 calls:
+
+| call | prompt tokens | cached | completion (incl. reasoning) | cost |
+|---|---|---|---|---|
+| 1 | 21 782 | 0 | 107 (45 reasoning) | 0.557 ct |
+| 2 | 21 782 | 21 779 | 97 (35 reasoning) | 0.055 ct |
+| 3 | 21 782 | 21 779 | 109 (38 reasoning) | 0.057 ct |
+
+Step 1 (page summary) costs ~0.05 ct. So one recommendation = ~0.6 ct uncached, ~0.1 ct with a warm tree cache. The tree is 21.8k tokens, not the 10-15k assumed in the research notes (ids are included in the TOON). A 300-credit pack at 4 € costs at most 1.8 € of LLM in the worst case. One earlier CLI run showed 0 cached tokens on a second call ~15 s later: OpenAI caching is best effort, not guaranteed. `max_tokens=300` leaves ~3× headroom over the observed ~110 completion tokens of this reasoning model; a run-away reasoning would surface as an empty-content parse error (500), not as a cost.

@@ -13,6 +13,7 @@ dependencies = [
     "python-toon>=0.1",
     "typer",
     "redis[hiredis]>=5.0",
+    "sentry-sdk>=2",
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -48,7 +49,6 @@ dev = [
     "ruff==0.17.1",
     "rich==15.0.0",
 ]
-prod = ["sentry-sdk"]
 
 [build-system]
 requires = ["hatchling"]

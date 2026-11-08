@@ -8,7 +8,7 @@ WORKDIR ${APP_HOME}
 COPY . ${APP_HOME}
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-  uv sync --frozen --no-group dev --group prod --no-install-project --no-editable
+  uv sync --frozen --no-group dev --no-install-project --no-editable
 
 FROM docker.io/python:3.14.5-slim-bookworm AS python-run-stage
 

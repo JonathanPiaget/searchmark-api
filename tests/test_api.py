@@ -1,10 +1,42 @@
+import asyncio
+import json
+from types import SimpleNamespace
+
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from app import main
 from app.main import _folder_paths, app, resolve_folder_path, validate_url
+from app.schemas.analyze import AnalyzeUrlResponse
 
 client = TestClient(app)
+
+ANALYSIS_JSON = '{"url": "https://x", "title": "T", "summary": "S"}'
+
+
+class FakeResponse:
+    """The parts of a LiteLLM ModelResponse that _complete reads."""
+
+    def __init__(self, content: str, cost: float | None = None):
+        self._hidden_params = {"response_cost": cost}
+        self.choices = [SimpleNamespace(message=SimpleNamespace(content=content))]
+
+
+@pytest.fixture
+def llm(monkeypatch):
+    """Replace acompletion with a stub returning `response`; returns the list of recorded call kwargs."""
+    calls: list[dict] = []
+
+    def install(response):
+        async def acompletion(**kwargs):
+            calls.append(kwargs)
+            return response
+
+        monkeypatch.setattr(main, "acompletion", acompletion)
+        return calls
+
+    return install
 
 
 class TestWelcome:
@@ -53,6 +85,46 @@ class TestRecommendEndpoint:
     def test_missing_url(self):
         resp = client.post("/recommend", json={})
         assert resp.status_code == 422
+
+    def test_too_many_folders(self):
+        folders = [{"id": str(i), "name": f"f{i}"} for i in range(main.MAX_FOLDERS + 1)]
+        resp = client.post("/recommend", json={"url": "https://example.com", "folders": folders})
+        assert resp.status_code == 413
+
+
+class TestComplete:
+    def test_bounded_call_and_parsed_result(self, llm):
+        calls = llm(FakeResponse(ANALYSIS_JSON))
+        result = asyncio.run(main._complete([], AnalyzeUrlResponse))
+        assert result.title == "T"
+        assert calls[0]["max_tokens"] == 300
+        assert calls[0]["timeout"] == 30
+
+    def test_alert_when_cost_above_threshold(self, llm, monkeypatch):
+        alerts: list[str] = []
+        monkeypatch.setattr(main.sentry_sdk, "capture_message", alerts.append)
+        llm(FakeResponse(ANALYSIS_JSON, cost=main.COST_ALERT_USD * 2))
+        asyncio.run(main._complete([], AnalyzeUrlResponse))
+        assert len(alerts) == 1
+
+    @pytest.mark.parametrize("cost", [None, 0.0001])
+    def test_no_alert_otherwise(self, llm, monkeypatch, cost):
+        alerts: list[str] = []
+        monkeypatch.setattr(main.sentry_sdk, "capture_message", alerts.append)
+        llm(FakeResponse(ANALYSIS_JSON, cost=cost))
+        asyncio.run(main._complete([], AnalyzeUrlResponse))
+        assert alerts == []
+
+
+class TestRecommendationPrompt:
+    def test_folder_tree_before_page_analysis(self, llm):
+        calls = llm(FakeResponse('{"reasoning": "r", "recommended_folder": "toolbar/A"}'))
+        analysis = AnalyzeUrlResponse(url="https://x", title="T", summary="S")
+        folders = json.dumps([{"id": "1", "name": "toolbar", "children": [{"id": "2", "name": "A", "children": []}]}])
+        rec = asyncio.run(main.get_folder_recommendation(analysis, folders))
+        user_message = calls[0]["messages"][1]["content"]
+        assert user_message.index("Folder Structure") < user_message.index("Webpage Analysis")
+        assert rec.recommended_folder == "toolbar/A"
 
 
 class TestResolveFolderPath:
