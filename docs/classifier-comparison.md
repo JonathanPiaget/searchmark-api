@@ -1,6 +1,6 @@
 # Classifier vs LLM for Folder Recommendation
 
-Research notes, 2026-10-24. Question: should step 2 (pick a folder) use a classifier instead of an LLM? Step 1 (page summary) is generative and stays an LLM.
+Research notes, 2026-10-24. **Decision 2026-11-08: v1 ships with the LLM for step 2; the experiments below stay open for v2.** Question: should step 2 (pick a folder) use a classifier instead of an LLM? Step 1 (page summary) is generative and stays an LLM.
 
 ## The folder tree (fixtures/bookmarks.json)
 
