@@ -22,7 +22,23 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 | Abuse | Traefik `rateLimit` middleware (labels in compose.production.yml) on a dedicated `/auth` router. No Python rate limiting |
 | Docs | Root `model-comparison.md` replaced by `docs/model-comparison.md` with today's prices and golden set scores |
 
-Assumptions to confirm with the extension side: the verify page shows the API key and the user pastes it into the extension (no deep link back into the extension in v1).
+## Open points (owner's call, not yet decided)
+
+- **Pack price.** 300 credits / 4 € is a placeholder used for margin maths only. The owner wants a real margin; re-discuss before delivery 5. Worst-case LLM cost of 300 credits is 1.8 € uncached, ~0.3 € with a warm cache; Stripe takes ~0.30 € + 2 % (+0.5 % Stripe Tax).
+- **Owner's own account must be free.** The extension is first of all for the owner's personal use. Proposed: no special code path; the delivery-3 CLI `create-account` takes `--credits N` and the owner grants himself a large ledger line with `reason='owner'`. Alternative if a code path is wanted later: an `unlimited` flag on `account`. Confirm with the owner at delivery 3.
+- **Key into the extension.** Assumed: the verify page shows the API key once and the user pastes it into the extension (no deep link back into the extension in v1). Confirm with the extension side before delivery 4.
+- **Email provider.** Resend or Postmark, pick at delivery 4 (free tier and domain verification to check).
+
+## Facts for the next agent (found while working, not obvious from the code)
+
+- Secrets live in `.envs/.local/.fastapi` (`OPENAI_API_KEY`, `REDIS_URL`); the CLI and the eval script load it with dotenv. `ANTHROPIC_API_KEY` goes there too for the Haiku run. `.envs/.local/.postgres` holds `POSTGRES_*`.
+- CI (`.github/workflows/main.yml`) runs pytest inside `compose.local.yml` (`docker compose exec fastapi`), and that compose already has Postgres and Valkey. DB tests need no extra CI service, only the `POSTGRES_*` env the fastapi service already receives.
+- Traefik is the edge, no Cloudflare in front. The `csrf@file` middleware referenced in compose.production.yml is defined in a file provider on the server, not in this repo. New middlewares (rateLimit) can be plain labels.
+- Sentry is initialised in `app/main.py` but `SENTRY_DSN` is not set anywhere yet; the production env file is on the server.
+- `gpt-5.6-luna` is a reasoning model: 35-45 reasoning tokens per step-2 call are billed as output and count against `max_tokens=300`.
+- The folder tree is 21.8k tokens for 894 folders (~24 tokens per folder), so `SEARCHMARK_MAX_FOLDERS=2000` caps a step-2 prompt at ~50k tokens ≈ 1 ct uncached on luna.
+- Model prices, caching rules per provider and exclusion reasons are in `docs/model-comparison.md`. Classifier alternatives (parked) in `docs/classifier-comparison.md`.
+- Vocabulary in `GLOSSARY.md`; `scripts/eval_recommend.py run --set fixtures/eval/golden.jsonl` writes `fixtures/eval/golden-<model>.jsonl`, `compare` prints the side-by-side.
 
 ## Deliveries
 
@@ -50,7 +66,7 @@ Assumptions to confirm with the extension side: the verify page shows the API ke
 - [ ] Re-check prices on the official pages the day of the run
 - [ ] `SEARCHMARK_MODEL=... uv run python scripts/eval_recommend.py run fixtures/bookmarks.json --set fixtures/eval/golden.jsonl` for the 3 candidates (Anthropic needs `ANTHROPIC_API_KEY`)
 - [ ] `compare` the 3 result files; pick cheapest model with exact ≥ baseline
-- [ ] Set the default `MODEL`; write `docs/model-comparison.md` (prices, scores, latency, cost per recommendation); delete root `model-comparison.md`
+- [ ] Set the default `MODEL`; fill the results table in `docs/model-comparison.md` (root `model-comparison.md` already removed)
 - [ ] If the winner is Anthropic: add `cache_control` on the tree block (LiteLLM passes it through) and re-measure cached tokens
 
 ### 3. Postgres, accounts, ledger, key auth
@@ -59,8 +75,8 @@ Assumptions to confirm with the extension side: the verify page shows the API ke
 - [ ] Auth dependency on `/recommend`: Bearer key → sha256 → account; 401 unknown key; 402 when balance < 1
 - [ ] Debit -1 (`reason='recommendation'`) after a successful recommendation
 - [ ] `GET /account`: email and balance
-- [ ] CLI `searchmark create-account <email>`: inserts account, +25 `signup` line, prints the key once (dev and support tool until delivery 4)
-- [ ] Tests against a real Postgres (`POSTGRES_HOST` set → run, else skip); Postgres service container in the CI workflow
+- [ ] CLI `searchmark create-account <email> [--credits N]`: inserts account, +N `signup`/`owner` line (default 25), prints the key once (dev, support and owner's free account)
+- [ ] Tests against a real Postgres (`POSTGRES_HOST` set → run, else skip); CI already runs pytest inside compose.local.yml which has Postgres
 - [ ] Verify: local compose up, create account via CLI, `/recommend` with and without key, balance decrements, 402 at 0
 
 ### 4. Signup by magic link
