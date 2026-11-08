@@ -27,6 +27,20 @@ Candidate models for the self-hosted pipeline: `Qwen/Qwen3-Embedding-0.6B` + `Qw
 3. Hybrid worth testing: embeddings shrink 894 paths to 20, the current LLM picks among those. 40× smaller prompt, minimal code change, same recall risk.
 4. Only an eval on our own bookmarks can rank these. No published benchmark covers ~900 hierarchical, user-specific labels.
 
+## Decision (2026-11-08): keep the LLM for v1
+
+Golden eval (`fixtures/eval/golden-gpt-5.6-luna.jsonl`, 20 bookmarks, own tree of 894 folders): 17 exact, 3 misses that are plausible neighbours (e.g. `Docker/Tools/Security` vs `Computing/Security`). Step-2 latency: median 2.2 s, max 2.8 s. Most users have 20-200 folders, an easier case than this fixture.
+
+What this changes in the plan above:
+
+- **Hybrid only above a folder-count threshold** (~300?). Below it the prefilter adds a failure mode (right folder outside top-20) for no accuracy gain. The LLM with the full tree stays the default.
+- **Step 2 is not the latency bottleneck.** Page fetch + step 1 weigh as much or more. Shrinking the step-2 prompt saves cost, not perceived latency. Measure end-to-end before optimising step 2.
+- **Return a top-3, not one folder.** 2 of the 3 misses would be absorbed by a second choice in the UI. Cheaper and higher impact than any classifier change.
+- **Multilingual is untested.** The LLM handles a French tree + Japanese page natively; Qwen3 models are multilingual but unverified here. Add 5-10 non-English pages to the golden set before trusting any option.
+- **The eval is too small.** 20 rows cannot tell 85% from 95%, and "no folder fits" is not measured at all. Grow the golden set before ranking options 3 and 4.
+
+Trigger to revisit: a user with >1000 folders (cost), or exact rate < 80% on a larger golden set (accuracy). Then run experiment 2 (recall@20) first.
+
 ## Experiment order
 
 1. Eval set from existing bookmarks, run against the current LLM (baseline). See `scripts/eval_recommend.py`.
