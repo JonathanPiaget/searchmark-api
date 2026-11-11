@@ -97,7 +97,7 @@ class TestComplete:
         calls = llm(FakeResponse(ANALYSIS_JSON))
         result = asyncio.run(main._complete([], AnalyzeUrlResponse))
         assert result.title == "T"
-        assert calls[0]["max_tokens"] == 300
+        assert calls[0]["max_tokens"] == 1000
         assert calls[0]["timeout"] == 30
 
     def test_alert_when_cost_above_threshold(self, llm, monkeypatch):

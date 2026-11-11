@@ -10,7 +10,7 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 | Step 2 | Stays an LLM for v1 (classifier research parked in docs/classifier-comparison.md) |
 | Model | One model for both steps (`SEARCHMARK_MODEL`). Candidates: `openai/gpt-5.6-luna` (baseline 17/20 exact), `openai/gpt-6-luna`, `anthropic/claude-haiku-5-5`. Rule: must reach ≥ baseline exact count on the 50-URL golden set; cheapest passing model wins |
 | Golden set | 20 → 50 URLs, stratified over top-level folders, dead pages dropped, each with a note. Owner reviews expected paths before any run |
-| Cost guards | Max 2 000 folders per request (413 beyond), `max_tokens=300`, LLM `timeout=30` s. Page content already capped at 15 000 chars |
+| Cost guards | Max 2 000 folders per request (413 beyond), `max_tokens=1000` (was 300 until 2026-11-11, see Review), LLM `timeout=30` s. Page content already capped at 15 000 chars |
 | Prompt caching | Step 2 message order: system prompt, folder tree, then page analysis last, so the per-account tree is a stable cacheable prefix (OpenAI caches ≥ 1 024 tokens automatically) |
 | Spend visibility | Hard monthly spend limit set in the provider console (manual). Real cost per request logged from LiteLLM `response_cost`; Sentry message when one call exceeds `SEARCHMARK_COST_ALERT_USD` (default 0.02) |
 | Offer | Freemium: 25 credits once per new account. Paid: one pack (300 credits, ~4 €), no expiry. Subscription deferred to v2 |
@@ -35,7 +35,7 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 - CI (`.github/workflows/main.yml`) runs pytest inside `compose.local.yml` (`docker compose exec fastapi`), and that compose already has Postgres and Valkey. DB tests need no extra CI service, only the `POSTGRES_*` env the fastapi service already receives.
 - Traefik is the edge, no Cloudflare in front. The `csrf@file` middleware referenced in compose.production.yml is defined in a file provider on the server, not in this repo. New middlewares (rateLimit) can be plain labels.
 - Sentry is initialised in `app/main.py` but `SENTRY_DSN` is not set anywhere yet; the production env file is on the server.
-- `gpt-5.6-luna` is a reasoning model: 35-45 reasoning tokens per step-2 call are billed as output and count against `max_tokens=300`.
+- `gpt-5.6-luna` and `gpt-6-luna` are reasoning models: reasoning tokens are billed as output and count against `max_tokens`. Measured per step-2 call on 2026-11-11: 46-138 on 5.6, 88-300+ on 6.
 - The folder tree is 21.8k tokens for 894 folders (~24 tokens per folder), so `SEARCHMARK_MAX_FOLDERS=2000` caps a step-2 prompt at ~50k tokens ≈ 1 ct uncached on luna.
 - Model prices, caching rules per provider and exclusion reasons are in `docs/model-comparison.md`. Classifier alternatives (parked) in `docs/classifier-comparison.md`.
 - Vocabulary in `GLOSSARY.md`; `scripts/eval_recommend.py run --set fixtures/eval/golden.jsonl` writes `fixtures/eval/golden-<model>.jsonl`, `compare` prints the side-by-side.
@@ -50,7 +50,7 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 
 ### 1. Cost guards, cacheable prompt, cost log, Sentry
 - [x] `/recommend`: count folders recursively, 413 when > 2 000 (`SEARCHMARK_MAX_FOLDERS`)
-- [x] Both LLM calls go through `_complete`: `max_tokens=300`, `timeout=30`
+- [x] Both LLM calls go through `_complete`: `max_tokens=300` (raised to 1000 on 2026-11-11), `timeout=30`
 - [x] `get_folder_recommendation`: tree before analysis in the user message (system, tree, analysis)
 - [x] Log `response_cost`, prompt and cached tokens per LLM call; `sentry_sdk.capture_message` when above `SEARCHMARK_COST_ALERT_USD`
 - [x] `sentry_sdk.init(dsn=SENTRY_DSN)` (no DSN = disabled); `sentry-sdk` moved to main deps, `prod` group and Dockerfile flag removed
@@ -60,7 +60,7 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 ### 2a. Golden set to 50
 - [x] One-off script in the scratchpad (not committed): stratified draw of ~40 leaves over top-level folders, HEAD request to drop dead pages, keep 30
 - [x] Append 30 rows to fixtures/eval/golden.jsonl with `note`
-- [ ] Hand back: owner reviews expected paths and notes before any model run
+- [x] Hand back: owner reviews expected paths and notes before any model run
 
 ### 2b. Model choice
 - [ ] Re-check prices on the official pages the day of the run
@@ -104,3 +104,8 @@ Measured on fixtures/bookmarks.json (894 folders) with gpt-5.6-luna, 3 consecuti
 | 3 | 21 782 | 21 779 | 109 (38 reasoning) | 0.057 ct |
 
 Step 1 (page summary) costs ~0.05 ct. So one recommendation = ~0.6 ct uncached, ~0.1 ct with a warm tree cache. The tree is 21.8k tokens, not the 10-15k assumed in the research notes (ids are included in the TOON). A 300-credit pack at 4 € costs at most 1.8 € of LLM in the worst case. One earlier CLI run showed 0 cached tokens on a second call ~15 s later: OpenAI caching is best effort, not guaranteed. `max_tokens=300` leaves ~3× headroom over the observed ~110 completion tokens of this reasoning model; a run-away reasoning would surface as an empty-content parse error (500), not as a cost.
+
+### Fix before delivery 2b (2026-11-11)
+The first golden-set runs on 50 URLs crashed on both OpenAI models: step 2 returned an empty answer (`finish_reason=length`, 300 of 300 completion tokens spent on reasoning), which is a 500 on `/recommend`. Seen 1 time in 23 step-2 calls on gpt-5.6-luna and 1 in 16 on gpt-6-luna; reproduced 2 times in 12 on gpt-6-luna for one URL, with `max_tokens=1000` the same call answered using 227 tokens. Cap raised to 1000: worst case +0.084 ct per call on gpt-5.6-luna, +0.035 ct on gpt-6-luna. The eval script now scores an LLM failure as a miss instead of stopping.
+
+Also measured: 0 prompt-cache hits in 37 step-2 calls during these runs (calls 10-20 s apart). Margin maths should use the uncached cost (~0.6 ct on gpt-5.6-luna).

@@ -28,6 +28,8 @@ from .prompts import EXISTING_FOLDER_RECOMMENDATION_PROMPT, NEW_FOLDER_RECOMMEND
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
 MODEL = os.environ.get("SEARCHMARK_MODEL", "openai/gpt-5.6-luna")
 MAX_FOLDERS = int(os.environ.get("SEARCHMARK_MAX_FOLDERS", "2000"))
+# reasoning tokens count against the cap: at 300 a reasoning model sometimes left no room for the answer
+MAX_TOKENS = 1000
 COST_ALERT_USD = float(os.environ.get("SEARCHMARK_COST_ALERT_USD", "0.02"))
 T = TypeVar("T", bound=BaseModel)
 
@@ -54,7 +56,9 @@ async def _complete(messages: list[dict], response_format: type[T]) -> T:
     # non-streaming call, so never a CustomStreamWrapper
     response = cast(
         ModelResponse,
-        await acompletion(model=MODEL, messages=messages, response_format=response_format, max_tokens=300, timeout=30),
+        await acompletion(
+            model=MODEL, messages=messages, response_format=response_format, max_tokens=MAX_TOKENS, timeout=30
+        ),
     )
     cost = response._hidden_params.get("response_cost")
     usage = getattr(response, "usage", None)

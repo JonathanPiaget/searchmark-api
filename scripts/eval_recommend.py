@@ -47,7 +47,11 @@ async def evaluate_one(url: str, expected: str, folders_json: str) -> dict:
         row["error"] = repr(e)[:200]  # repr: httpx timeouts have an empty str()
         return row
     start = time.perf_counter()
-    rec = await get_folder_recommendation(analysis, folders_json)
+    try:
+        rec = await get_folder_recommendation(analysis, folders_json)
+    except Exception as e:
+        row.update(status="miss", error=repr(e)[:200])
+        return row
     row.update(got=rec.recommended_folder, latency_ms=round((time.perf_counter() - start) * 1000))
     row["status"] = verdict(expected, rec.recommended_folder)
     return row
