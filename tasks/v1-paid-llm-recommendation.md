@@ -58,8 +58,8 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 - [x] Verify: 42 tests green, `pre-commit run -a` green, 3 real step-2 calls on the fixture tree (see Review)
 
 ### 2a. Golden set to 50
-- [ ] One-off script in the scratchpad (not committed): stratified draw of ~40 leaves over top-level folders, HEAD request to drop dead pages, keep 30
-- [ ] Append 30 rows to fixtures/eval/golden.jsonl with `note`
+- [x] One-off script in the scratchpad (not committed): stratified draw of ~40 leaves over top-level folders, HEAD request to drop dead pages, keep 30
+- [x] Append 30 rows to fixtures/eval/golden.jsonl with `note`
 - [ ] Hand back: owner reviews expected paths and notes before any model run
 
 ### 2b. Model choice
