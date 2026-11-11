@@ -27,12 +27,12 @@ Sources: https://developers.openai.com/api/docs/pricing · https://claude.com/pr
 
 | Provider | Opt-in | Min prefix | Discount | How to see hits |
 |---|---|---|---|---|
-| OpenAI | automatic; GPT-5.6+ bills cache writes 1.25× (30 min TTL) | 1 024 tokens | reads 0.1× | `usage.prompt_tokens_details.cached_tokens` (logged by `_complete`) |
+| OpenAI | GPT-5.6+: automatic mode caches the whole prompt up to the end of the last user message, so it only hits on identical requests. We use explicit mode with `prompt_cache_breakpoint` on the tree block. Writes billed 1.25× (30 min TTL) | 1 024 tokens | reads 0.1× | `usage.prompt_tokens_details.cached_tokens` (logged by `_complete`) |
 | Anthropic | explicit `cache_control: {"type": "ephemeral"}` on the block | 512 (Haiku/Sonnet 5.5) | reads 0.1× (Haiku), writes 1.25× | `cache_creation_input_tokens`, `cache_read_input_tokens` |
 | Gemini | implicit on 2.5+; explicit = billed storage | 4 096 (3.8 Flash) | 0.1× | usage metadata |
 | DeepSeek | always on | undocumented | ~0.02× | `prompt_cache_hit_tokens` |
 
-Caching is best effort everywhere: one CLI run on 2026-11-08 got 0 cached tokens on a second identical prefix 15 s later, three consecutive calls 5 s apart all hit.
+The 0 cached tokens seen on 2026-11-08 for a second call were not bad luck: automatic mode cannot hit when the page differs. With the explicit breakpoint, 7 of 7 follow-up calls on different pages hit on 2026-11-11.
 
 ## Golden set results (50 URLs)
 

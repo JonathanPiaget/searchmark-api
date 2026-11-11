@@ -31,6 +31,10 @@ MAX_FOLDERS = int(os.environ.get("SEARCHMARK_MAX_FOLDERS", "2000"))
 # reasoning tokens count against the cap: at 300 a reasoning model sometimes left no room for the answer
 MAX_TOKENS = 1000
 COST_ALERT_USD = float(os.environ.get("SEARCHMARK_COST_ALERT_USD", "0.02"))
+# OpenAI's default caches the whole prompt, so a new page never hits and every call pays a cache write.
+# Explicit mode caches only up to the marked block (the folder tree).
+OPENAI_CACHE = MODEL.startswith("openai/")
+OPENAI_CACHE_OPTIONS = {"extra_body": {"prompt_cache_options": {"mode": "explicit"}}} if OPENAI_CACHE else {}
 T = TypeVar("T", bound=BaseModel)
 
 logging.basicConfig(level=logging.INFO)
@@ -57,7 +61,12 @@ async def _complete(messages: list[dict], response_format: type[T]) -> T:
     response = cast(
         ModelResponse,
         await acompletion(
-            model=MODEL, messages=messages, response_format=response_format, max_tokens=MAX_TOKENS, timeout=30
+            model=MODEL,
+            messages=messages,
+            response_format=response_format,
+            max_tokens=MAX_TOKENS,
+            timeout=30,
+            **OPENAI_CACHE_OPTIONS,
         ),
     )
     cost = response._hidden_params.get("response_cost")
@@ -161,9 +170,11 @@ async def get_folder_recommendation(
     folders_data = json.loads(folders_json)
     folders_toon = toon_encode(folders_data)
 
-    # tree first: it is the stable prefix per user, so providers can cache it
-    human_message = f"""User's Folder Structure (TOON format):
-{folders_toon}
+    # tree first: it is the stable prefix per user, cached up to the end of this block
+    tree_block: dict = {"type": "text", "text": f"User's Folder Structure (TOON format):\n{folders_toon}"}
+    if OPENAI_CACHE:
+        tree_block["prompt_cache_breakpoint"] = {"mode": "explicit"}
+    analysis_text = f"""
 
 Webpage Analysis:
 - URL: {analysis.url}
@@ -179,7 +190,7 @@ Webpage Analysis:
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": human_message},
+        {"role": "user", "content": [tree_block, {"type": "text", "text": analysis_text}]},
     ]
     result = await _complete(messages, response_format)
     result.recommended_folder = resolve_folder_path(result.recommended_folder, _folder_paths(folders_data))

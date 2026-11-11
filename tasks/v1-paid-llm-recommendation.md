@@ -12,7 +12,7 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 | Model | One model for both steps (`SEARCHMARK_MODEL`). Candidates: `openai/gpt-5.6-luna` (baseline 17/20 exact), `openai/gpt-6-luna`, `anthropic/claude-haiku-5-5`. Rule: must reach ≥ baseline exact count on the 50-URL golden set; cheapest passing model wins |
 | Golden set | 20 → 50 URLs, stratified over top-level folders, dead pages dropped, each with a note. Owner reviews expected paths before any run |
 | Cost guards | Max 2 000 folders per request (413 beyond), `max_tokens=1000` (was 300 until 2026-11-11, see Review), LLM `timeout=30` s. Page content already capped at 15 000 chars |
-| Prompt caching | Step 2 message order: system prompt, folder tree, then page analysis last, so the per-account tree is a stable cacheable prefix (OpenAI caches ≥ 1 024 tokens automatically) |
+| Prompt caching | Step 2 message order: system prompt, folder tree, then page analysis last, so the per-account tree is a stable cacheable prefix. On OpenAI the tree is its own content block with an explicit cache breakpoint (`prompt_cache_options.mode=explicit`); the automatic mode never hits (see Review) |
 | Spend visibility | Hard monthly spend limit set in the provider console (manual). Real cost per request logged from LiteLLM `response_cost`; Sentry message when one call exceeds `SEARCHMARK_COST_ALERT_USD` (default 0.02 USD ≈ 1.7 ct; the variable stays in USD because LiteLLM reports cost in USD) |
 | Offer | Freemium: 25 credits once per new account. Paid: one pack (300 credits, ~3.70 CHF), no expiry. Subscription deferred to v2 |
 | Debit | 1 credit per HTTP 200 of `/recommend`. Fetch or LLM errors: 0. Cache hit, repeated URL, `create_new_folder`: still 1. Balance ≥ 1 checked before, debited after; -1/-2 tolerated |
@@ -110,3 +110,15 @@ Step 1 (page summary) costs ~0.04 ct. So one recommendation = ~0.5 ct uncached, 
 The first golden-set runs on 50 URLs crashed on both OpenAI models: step 2 returned an empty answer (`finish_reason=length`, 300 of 300 completion tokens spent on reasoning), which is a 500 on `/recommend`. Seen 1 time in 23 step-2 calls on gpt-5.6-luna and 1 in 16 on gpt-6-luna; reproduced 2 times in 12 on gpt-6-luna for one URL, with `max_tokens=1000` the same call answered using 227 tokens. Cap raised to 1000: worst case +0.070 ct per call on gpt-5.6-luna, +0.029 ct on gpt-6-luna. The eval script now scores an LLM failure as a miss instead of stopping.
 
 Also measured: 0 prompt-cache hits in 37 step-2 calls during these runs (calls 10-20 s apart). Margin maths should use the uncached cost (~0.5 ct on gpt-5.6-luna).
+
+### Prompt cache fix (2026-11-11)
+Why the cache never hit: on GPT-5.6 and later, OpenAI's automatic mode writes one cache entry at the end of the last user message. Tree and page analysis were one message, so only an identical request could hit, and every call paid the cache write (1.25× input). The three hits measured at delivery 1 were the same URL three times.
+
+Now the tree is a separate content block marked with `prompt_cache_breakpoint`, and both calls use explicit mode, so step 1 (never reusable) no longer pays a write either. Measured through the eval script on 4 different pages, 894-folder tree, 30 min cache lifetime:
+
+| model | step 2 cold | step 2 warm (21 748 tokens cached) | step 1 |
+|---|---|---|---|
+| gpt-5.6-luna | 0.48 ct | 0.04-0.06 ct | ~0.07 ct (was ~0.08) |
+| gpt-6-luna | 0.23 ct | 0.024 ct | ~0.035 ct |
+
+A cold call costs the same as before; a call within 30 min on the same tree costs about a tenth. Margin maths keeps the cold cost as worst case: a user who files one bookmark a day never hits. Other providers get no marker yet (Anthropic needs `cache_control`, planned in 2b if it wins).

@@ -122,8 +122,13 @@ class TestRecommendationPrompt:
         analysis = AnalyzeUrlResponse(url="https://x", title="T", summary="S")
         folders = json.dumps([{"id": "1", "name": "toolbar", "children": [{"id": "2", "name": "A", "children": []}]}])
         rec = asyncio.run(main.get_folder_recommendation(analysis, folders))
-        user_message = calls[0]["messages"][1]["content"]
-        assert user_message.index("Folder Structure") < user_message.index("Webpage Analysis")
+        tree, page = calls[0]["messages"][1]["content"]
+        assert "Folder Structure" in tree["text"]
+        assert "Webpage Analysis" in page["text"]
+        # the cache stops after the tree, so another page with the same tree is a cache hit
+        assert tree["prompt_cache_breakpoint"] == {"mode": "explicit"}
+        assert "prompt_cache_breakpoint" not in page
+        assert calls[0]["extra_body"] == {"prompt_cache_options": {"mode": "explicit"}}
         assert rec.recommended_folder == "toolbar/A"
 
 
