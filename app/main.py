@@ -26,7 +26,7 @@ from . import cache
 from .prompts import EXISTING_FOLDER_RECOMMENDATION_PROMPT, NEW_FOLDER_RECOMMENDATION_PROMPT
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1"}
-MODEL = os.environ.get("SEARCHMARK_MODEL", "openai/gpt-5.6-luna")
+MODEL = os.environ.get("SEARCHMARK_MODEL", "openai/gpt-6-luna")
 MAX_FOLDERS = int(os.environ.get("SEARCHMARK_MAX_FOLDERS", "2000"))
 # reasoning tokens count against the cap: at 300 a reasoning model sometimes left no room for the answer
 MAX_TOKENS = 1000

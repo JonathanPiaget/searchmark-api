@@ -9,7 +9,7 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 | Topic | Decision |
 |---|---|
 | Step 2 | Stays an LLM for v1 (classifier research parked in docs/classifier-comparison.md) |
-| Model | One model for both steps (`SEARCHMARK_MODEL`). Candidates: `openai/gpt-5.6-luna` (baseline 17/20 exact), `openai/gpt-6-luna`, `anthropic/claude-haiku-5-5`. Rule: must reach ≥ baseline exact count on the 50-URL golden set; cheapest passing model wins |
+| Model | One model for both steps (`SEARCHMARK_MODEL`). Chosen 2026-11-11: `openai/gpt-6-luna` (33/50 exact, same as the `openai/gpt-5.6-luna` baseline, half the price; `anthropic/claude-haiku-5-5` rejected at 24/50). Rule: must reach ≥ baseline exact count on the 50-URL golden set; cheapest passing model wins |
 | Golden set | 20 → 50 URLs, stratified over top-level folders, dead pages dropped, each with a note. Owner reviews expected paths before any run |
 | Cost guards | Max 2 000 folders per request (413 beyond), `max_tokens=1000` (was 300 until 2026-11-11, see Review), LLM `timeout=30` s. Page content already capped at 15 000 chars |
 | Prompt caching | Step 2 message order: system prompt, folder tree, then page analysis last, so the per-account tree is a stable cacheable prefix. On OpenAI the tree is its own content block with an explicit cache breakpoint (`prompt_cache_options.mode=explicit`); the automatic mode never hits (see Review) |
@@ -25,7 +25,7 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 
 ## Open points (owner's call, not yet decided)
 
-- **Pack price.** 300 credits / 3.70 CHF is a placeholder used for margin maths only. The owner wants a real margin; re-discuss before delivery 5. Worst-case LLM cost of 300 credits is 1.50 CHF uncached, ~0.25 CHF with a warm cache; Stripe takes ~0.28 CHF + 2 % (converted from the EUR fee, re-check on Stripe's Swiss pricing page) (+0.5 % Stripe Tax).
+- **Pack price.** 300 credits / 3.70 CHF is a placeholder used for margin maths only. The owner wants a real margin; re-discuss before delivery 5. Worst-case LLM cost of 300 credits on the chosen gpt-6-luna is 0.78 CHF with a cold cache every time, ~0.16 CHF always warm (measured 2026-11-11); Stripe takes ~0.28 CHF + 2 % (converted from the EUR fee, re-check on Stripe's Swiss pricing page) (+0.5 % Stripe Tax).
 - **Owner's own account must be free.** The extension is first of all for the owner's personal use. Proposed: no special code path; the delivery-3 CLI `create-account` takes `--credits N` and the owner grants himself a large ledger line with `reason='owner'`. Alternative if a code path is wanted later: an `unlimited` flag on `account`. Confirm with the owner at delivery 3.
 - **Key into the extension.** Assumed: the verify page shows the API key once and the user pastes it into the extension (no deep link back into the extension in v1). Confirm with the extension side before delivery 4.
 - **Email provider.** Resend or Postmark, pick at delivery 4 (free tier and domain verification to check).
@@ -64,11 +64,11 @@ Each numbered delivery is one commit the owner reviews alone, with `just check` 
 - [x] Hand back: owner reviews expected paths and notes before any model run
 
 ### 2b. Model choice
-- [ ] Re-check prices on the official pages the day of the run
-- [ ] `SEARCHMARK_MODEL=... uv run python scripts/eval_recommend.py run fixtures/bookmarks.json --set fixtures/eval/golden.jsonl` for the 3 candidates (Anthropic needs `ANTHROPIC_API_KEY`)
-- [ ] `compare` the 3 result files; pick cheapest model with exact ≥ baseline
-- [ ] Set the default `MODEL`; fill the results table in `docs/model-comparison.md` (root `model-comparison.md` already removed)
-- [ ] If the winner is Anthropic: add `cache_control` on the tree block (LiteLLM passes it through) and re-measure cached tokens
+- [x] Re-check prices on the official pages the day of the run
+- [x] `SEARCHMARK_MODEL=... uv run python scripts/eval_recommend.py run fixtures/bookmarks.json --set fixtures/eval/golden.jsonl` for the 3 candidates (Anthropic needs `ANTHROPIC_API_KEY`)
+- [x] `compare` the 3 result files; pick cheapest model with exact ≥ baseline
+- [x] Set the default `MODEL`; fill the results table in `docs/model-comparison.md` (root `model-comparison.md` already removed)
+- [x] (not needed, OpenAI won) If the winner is Anthropic: add `cache_control` on the tree block (LiteLLM passes it through) and re-measure cached tokens
 
 ### 3. Postgres, accounts, ledger, key auth
 - [ ] `asyncpg` dependency; `app/db.py`: pool from `POSTGRES_*` env, `schema.sql` executed at startup (`CREATE TABLE IF NOT EXISTS`)
@@ -122,3 +122,14 @@ Now the tree is a separate content block marked with `prompt_cache_breakpoint`, 
 | gpt-6-luna | 0.23 ct | 0.024 ct | ~0.035 ct |
 
 A cold call costs the same as before; a call within 30 min on the same tree costs about a tenth. Margin maths keeps the cold cost as worst case: a user who files one bookmark a day never hits. Other providers get no marker yet (Anthropic needs `cache_control`, planned in 2b if it wins).
+
+### Delivery 2b (2026-11-11)
+Prices re-read on the official pages: unchanged. 50 URLs, analysis cache off, `max_tokens=1000`, explicit tree cache on OpenAI.
+
+| model | exact | related | miss | 2nd pass exact | cost per recommendation, cold / warm |
+|---|---|---|---|---|---|
+| gpt-5.6-luna (baseline) | 33 | 2 | 15 | 35 | 0.53 ct / 0.11 ct |
+| gpt-6-luna | 33 | 5 | 12 | 34 | 0.26 ct / 0.05 ct |
+| claude-haiku-5-5 | 24 | 13 | 13 | not re-run | 0.31 ct, no cache marker |
+
+Default `MODEL` is now `openai/gpt-6-luna`. Caveat for the owner: the rule passes on the recorded pass (33 ≥ 33) but not against the baseline's second pass (34 < 35); run-to-run noise is 1-2 exact, so the two models are indistinguishable on this set. gpt-6-luna is ~0.5 s slower at the median (3.1 s against 2.6 s). The production env file on the server may still set `SEARCHMARK_MODEL`. Nine URLs are missed by every model (personal or project folders the page cannot reveal), so ~80 % exact is the ceiling on this set. Total spend for all runs of the day: about 0.50 CHF.
