@@ -19,12 +19,17 @@ concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - uses: actions/cache@v5.1.0
         with:
@@ -41,6 +46,8 @@ jobs:
 
       - name: Install just
         uses: extractions/setup-just@v4.0.0
+        with:
+          just-version: 1.59.0
 
       - name: Run checks
         run: just check
@@ -61,6 +68,8 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Create env file
         run: cp .envs/.local/.fastapi.example .envs/.local/.fastapi
@@ -94,6 +103,8 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4.8.0
@@ -134,13 +145,17 @@ jobs:
 
     steps:
       - name: Trigger webhook deployment
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          WEBHOOK_DOMAIN: ${{ secrets.DOMAIN }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
         run: |
-          curl -X POST https://webhook.${{ secrets.DOMAIN }}/deploy/jpserver \
-            -H "X-Webhook-Token: ${{ secrets.WEBHOOK_SECRET }}" \
+          curl -X POST "https://webhook.${WEBHOOK_DOMAIN}/deploy/jpserver" \
+            -H "X-Webhook-Token: ${WEBHOOK_SECRET}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "ref": "${{ github.ref_name }}",
-              "commit": "${{ github.sha }}",
-              "trigger": "github-actions"
-            }' \
+            -d "$(jq -cn \
+              --arg ref "$REF_NAME" \
+              --arg commit "$COMMIT_SHA" \
+              '{ref: $ref, commit: $commit, trigger: "github-actions"}')" \
             -f -s -S --max-time 120
